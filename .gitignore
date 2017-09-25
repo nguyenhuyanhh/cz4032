@@ -1,1 +1,9 @@
-.vscode/
+# Python specifics
+.py[cod]
+__pycache__/
+
+# VSCode
+.vscode
+
+# Models for XGBoost
+model_xgboost/*.csv
