@@ -6,4 +6,4 @@ __pycache__/
 .vscode
 
 # Models for XGBoost
-model_xgboost/*.csv
+model_xgboost/
