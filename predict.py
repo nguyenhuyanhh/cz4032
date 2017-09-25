@@ -16,6 +16,8 @@ import xgboost as xgb
 CUR_DIR = os.path.dirname(os.path.realpath(__file__))
 DATA_DIR = os.path.join(CUR_DIR, 'competition_data')
 MODEL_DIR = os.path.join(CUR_DIR, 'model_xgboost')
+if not os.path.exists(MODEL_DIR):
+    os.makedirs(MODEL_DIR)
 # inputs
 TRAIN_FILE = os.path.join(DATA_DIR, 'train_set.csv')
 TUBE_FILE = os.path.join(DATA_DIR, 'tube.csv')
