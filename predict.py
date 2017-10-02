@@ -5,11 +5,13 @@ Caterpillar Tube Pricing.
 from __future__ import print_function
 
 import argparse
+import json
 import math
 import os
 from time import time
 
 import numpy as np
+
 import xgboost as xgb
 
 # init paths
@@ -312,7 +314,7 @@ def preprocess():
     return merged_train_path, merged_test_path
 
 
-def train(features, train_set, output_model=True):
+def train(features, train_set, config_file=os.path.join(CUR_DIR, 'config.json'), output_model=True):
     """
     Build the model for prediction.
 
@@ -320,6 +322,8 @@ def train(features, train_set, output_model=True):
         features: list(str) - list of features used to build the model
                 features must match a header item in csv
         train_set: str - path to training set
+        config_file: str - path to config file (hyper-parameters)
+                default is 'config.json' in current directory
         output_model: boolean - whether to output the model
                 default is True. if False, output cv score only
     """
@@ -348,23 +352,17 @@ def train(features, train_set, output_model=True):
 
     # xgboost parameters
     dtrain = xgb.DMatrix(a_mat_big, label=vects[len(vects) - 1])
-    param = {}
-    param["eta"] = 0.02
-    param["min_child_weight"] = 6
-    param["subsample"] = 0.7
-    param["colsample_bytree"] = 0.6
-    param["scale_pos_weight"] = 0.8
-    param["max_depth"] = 8
-    param["max_delta_step"] = 2
+    with open(config_file) as cfg:
+        params = json.load(cfg)
     num_round = 5000
 
     # output model
     if output_model:
-        model = xgb.train(param, dtrain, num_round)
+        model = xgb.train(params, dtrain, num_round)
         model.save_model(os.path.join(MODEL_DIR, '0001.model'))
     else:
         # using the built in cv method to check errors, it uses rmse though
-        xgb.cv(param, dtrain, num_round, nfold=5, metrics={'rmse'}, seed=0, callbacks=[
+        xgb.cv(params, dtrain, num_round, nfold=5, metrics={'rmse'}, seed=0, callbacks=[
             xgb.callback.print_evaluation(show_stdv=True)])
 
 
