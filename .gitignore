@@ -1,5 +1,5 @@
 # Python specifics
-.py[cod]
+*.py[cod]
 __pycache__/
 
 # VSCode
@@ -7,3 +7,5 @@ __pycache__/
 
 # Models for XGBoost
 model_xgboost/
+
+.idea/
