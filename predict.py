@@ -9,6 +9,8 @@ import os
 from time import time
 
 import numpy as np
+from bayes_opt import BayesianOptimization
+
 import xgboost as xgb
 
 # init paths
@@ -38,6 +40,8 @@ def predict(features, test_set):
                 features must match a header item in csv
         test_set: str - path to test set
     """
+    print('predicting...')
+
     # get test matrix
     lines = list()
     with open(test_set, 'r') as merged_:
@@ -52,7 +56,7 @@ def predict(features, test_set):
             if i == 0:  # id
                 vects[i].append(int(values[i][-5:]))
             elif i == 25:  # weight
-                vects[i].append(math.log10(float(values[i]) + 1))
+                vects[i].append(math.log(float(values[i]) + 1))
             else:
                 vects[i].append(float(values[i]))
     a_mat = list()
@@ -72,7 +76,7 @@ def predict(features, test_set):
     with open(OUT_FILE, 'w') as out_:
         out_.write('id,cost\n')
         for pred in ypred:
-            cost = math.pow(10, pred) - 1
-            # transform predictions back to y with (10 ** pred) - 1
+            # transform predictions back to y with exp(pred) - 1
+            cost = math.exp(pred) - 1
             out_.write('{},{}\n'.format(id_, cost))
             id_ += 1

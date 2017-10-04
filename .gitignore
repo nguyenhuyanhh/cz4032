@@ -1,5 +1,5 @@
 # Python specifics
-.py[cod]
+*.py[cod]
 __pycache__/
 
 # VSCode
