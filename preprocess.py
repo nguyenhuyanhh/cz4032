@@ -18,8 +18,6 @@ TEST_FILE = os.path.join(DATA_DIR, 'test_set.csv')
 SUPP_ENCODE = ['S-0066', 'S-0041', 'S-0072',
                'S-0054', 'S-0026', 'S-0013', 'S-others']
 DATE_ENCODE = ['year', 'month', 'date']
-# outputs
-OUT_FILE = os.path.join(CUR_DIR, 'out.csv')
 
 
 def preprocess_train(out_file):
@@ -286,6 +284,7 @@ def preprocess():
     """
     Wrapper for preprocessing functions.
     """
+    print('preprocessing...')
     pre_train_path = os.path.join(MODEL_DIR, 'pre_train.csv')
     pre_test_path = os.path.join(MODEL_DIR, 'pre_test.csv')
     pre_bill_path = os.path.join(MODEL_DIR, 'pre_bill_of_materials.csv')

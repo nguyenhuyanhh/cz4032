@@ -6,27 +6,14 @@ from __future__ import print_function
 
 import math
 import os
-from time import time
 
 import numpy as np
-from bayes_opt import BayesianOptimization
 
 import xgboost as xgb
 
 # init paths
 CUR_DIR = os.path.dirname(os.path.realpath(__file__))
-DATA_DIR = os.path.join(CUR_DIR, 'competition_data')
 MODEL_DIR = os.path.join(CUR_DIR, 'model_xgboost')
-if not os.path.exists(MODEL_DIR):
-    os.makedirs(MODEL_DIR)
-# inputs
-TRAIN_FILE = os.path.join(DATA_DIR, 'train_set.csv')
-TUBE_FILE = os.path.join(DATA_DIR, 'tube.csv')
-TEST_FILE = os.path.join(DATA_DIR, 'test_set.csv')
-# constants
-SUPP_ENCODE = ['S-0066', 'S-0041', 'S-0072',
-               'S-0054', 'S-0026', 'S-0013', 'S-others']
-DATE_ENCODE = ['year', 'month', 'date']
 # outputs
 OUT_FILE = os.path.join(CUR_DIR, 'out.csv')
 
