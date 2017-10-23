@@ -3,6 +3,8 @@ Preprocess data for training and testing purposes
 """
 
 import os
+import pandas as pd
+import datetime
 
 # init paths
 CUR_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -26,33 +28,45 @@ def preprocess_train(out_file):
 
     Arguments:
         out_file: str - path to output file
-    CSV header:
+    In CSV header:
+        tube_assembly_id,supplier,quote_date,annual_usage,min_order_quantity,
+        bracket_pricing,quantity,cost
+    Out CSV header:
         tube_assembly_id,S-0066,S-0041,S-0072,S-0054,S-0026,S-0013,S-others,
         year,month,date,annual_usage,min_order_quantity,bracket_pricing,quantity,cost
     """
-    tmp = list()
-    with open(TRAIN_FILE, 'r') as in_:
-        tmp = in_.readlines()
-    with open(out_file, 'w') as out_:
-        head = tmp[0].strip().split(',')
-        head_tmp = [head[0]] + SUPP_ENCODE + DATE_ENCODE + head[-5:]
-        out_.write(','.join(head_tmp) + '\n')
-        for line in tmp[1:]:
-            values = line.strip().split(',')
-            # encoding for supplier
-            enc_sup = ['0', '0', '0', '0', '0', '0', '0']
-            if values[1] in SUPP_ENCODE:
-                index = SUPP_ENCODE.index(values[1])
-                enc_sup[index] = '1'
-            else:
-                enc_sup[-1] = '1'
-            # encoding for date
-            enc_date = values[2].split('-')
-            # encoding for bracket
-            enc_brac = {'Yes': '1', 'No': '0'}
-            value_tmp = [values[0]] + enc_sup + enc_date + \
-                values[-5:-3] + [enc_brac[values[-3]]] + values[-2:]
-            out_.write(','.join(value_tmp) + '\n')
+    # read training file
+    df_in = pd.read_csv(TRAIN_FILE)
+
+    col_headers = df_in.columns.values.tolist()
+    col_subset = [col_headers[0]] + col_headers[-5:]
+
+    # create output dataframe
+    df_out = df_in.filter(items=col_subset).copy()
+    col_add = SUPP_ENCODE + DATE_ENCODE
+    df_out = df_out.reindex(columns=df_out.columns.tolist() + col_add, fill_value=0)
+
+    for index, row in df_in.iterrows():
+        # encoding for supplier
+        if row['supplier'] in SUPP_ENCODE:
+            df_out.set_value(index, row['supplier'], 1)
+        else:
+            df_out.set_value(index, SUPP_ENCODE[-1], 1)
+
+        # encoding for bracket
+        if row['bracket_pricing'] == 'Yes':
+            df_out.set_value(index, row['bracket_pricing'], 1)
+        else:
+            df_out.set_value(index, row['bracket_pricing'], 0)
+
+        # encoding for date format YYYY-MM-DD
+        date = row['quote_date'].split('-')
+        df_out.set_value(index, 'year', date[0])
+        df_out.set_value(index, 'month', date[1])
+        df_out.set_value(index, 'date', date[2])
+
+    # write to output file
+    df_out.to_csv(out_file)
 
 
 def preprocess_test(out_file):
@@ -61,33 +75,45 @@ def preprocess_test(out_file):
 
     Arguments:
         out_file: str - path to output file
-    CSV header:
+    In CSV header:
+        id,tube_assembly_id,supplier,quote_date,annual_usage,min_order_quantity,bracket_pricing,quantity
+    Out CSV header:
         tube_assembly_id,S-0066,S-0041,S-0072,S-0054,S-0026,S-0013,S-others,
         year,month,date,annual_usage,min_order_quantity,bracket_pricing,quantity
     """
-    tmp = list()
-    with open(TEST_FILE, 'r') as in_:
-        tmp = in_.readlines()
-    with open(out_file, 'w') as out_:
-        head = tmp[0].strip().split(',')
-        head_tmp = [head[1]] + SUPP_ENCODE + DATE_ENCODE + head[-4:]
-        out_.write(','.join(head_tmp) + '\n')
-        for line in tmp[1:]:
-            values = line.strip().split(',')
-            # encoding for supplier
-            enc_sup = ['0', '0', '0', '0', '0', '0', '0']
-            if values[2] in SUPP_ENCODE:
-                index = SUPP_ENCODE.index(values[2])
-                enc_sup[index] = '1'
-            else:
-                enc_sup[-1] = '1'
-            # encoding for date
-            enc_date = values[3].split('-')
-            # encoding for bracket
-            enc_brac = {'Yes': '1', 'No': '0'}
-            value_tmp = [values[1]] + enc_sup + enc_date + \
-                values[-4:-2] + [enc_brac[values[-2]]] + values[-1:]
-            out_.write(','.join(value_tmp) + '\n')
+
+    # read training file
+    df_in = pd.read_csv(TEST_FILE)
+
+    col_headers = df_in.columns.values.tolist()
+    col_subset = [col_headers[1]] + col_headers[-4:]
+
+    # create output dataframe
+    df_out = df_in.filter(items=col_subset).copy()
+    col_add = SUPP_ENCODE + DATE_ENCODE
+    df_out = df_out.reindex(columns=df_out.columns.tolist() + col_add, fill_value=0)
+
+    for index, row in df_in.iterrows():
+        # encoding for supplier
+        if row['supplier'] in SUPP_ENCODE:
+            df_out.set_value(index, row['supplier'], 1)
+        else:
+            df_out.set_value(index, SUPP_ENCODE[-1], 1)
+
+        # encoding for bracket
+        if row['bracket_pricing'] == 'Yes':
+            df_out.set_value(index, row['bracket_pricing'], 1)
+        else:
+            df_out.set_value(index, row['bracket_pricing'], 0)
+
+        # encoding for date format YYYY-MM-DD
+        date = row['quote_date'].split('-')
+        df_out.set_value(index, 'year', date[0])
+        df_out.set_value(index, 'month', date[1])
+        df_out.set_value(index, 'date', date[2])
+
+    # write to output file
+    df_out.to_csv(out_file)
 
 
 def preprocess_components():
