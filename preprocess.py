@@ -5,6 +5,7 @@ Preprocess data for training and testing purposes
 import datetime
 import os
 
+import numpy as np
 import pandas as pd
 
 # init paths
@@ -130,7 +131,7 @@ def preprocess_components():
     for file_ in files:
         key = file_[5:-4]  # component type: adaptor, boss, etc.
         forward_lookup[key] = {}
-        data = pd.read_csv(os.path.join(DATA_DIR, 'file_'))
+        data = pd.read_csv(os.path.join(DATA_DIR, file_))
         for index, row in data.iterrows():
             reverse_lookup[row['component_id']] = key
             if row['weight'] != 'NA':
@@ -138,7 +139,7 @@ def preprocess_components():
             else:
                 forward_lookup[key][row['component_id']] = 0
     # handle component id 9999
-    forward_lookup['other']['9999'] = '0'
+    forward_lookup['other']['9999'] = 0
     reverse_lookup['9999'] = 'other'
     return forward_lookup, reverse_lookup
 
@@ -153,33 +154,30 @@ def preprocess_bill_of_materials(out_file):
         tube_assembly_id,adaptor,boss,elbow,float,hfl,nut,other,sleeve,
         straight,tee,threaded,total_weight
     """
+    # read bill of materials
+    df_in = pd.read_csv(os.path.join(DATA_DIR, 'bill_of_materials.csv'))
+
+    # prepare df_out
     fwd, rev = preprocess_components()
-    keys = fwd.keys() + ['total_weight']
-    tubes = dict()
-    tmp = list()
-    with open(os.path.join(DATA_DIR, 'bill_of_materials.csv'), 'r') as in_:
-        tmp = in_.readlines()
-    for line in tmp[1:]:
-        values = line.strip().split(',')
-        tubes[values[0]] = dict(zip(keys, [0] * len(keys)))
-        # calculate total weight and number of each type of components
-        in_ = 1
-        while in_ < len(values):
-            if values[in_] == 'NA':
-                break
-            else:
-                type_ = rev[values[in_]]
-                weight = int(values[in_ + 1])
-                tubes[values[0]][type_] += weight
-                tubes[values[0]][
-                    'total_weight'] += float(fwd[type_][values[in_]]) * weight
-            in_ += 2
-    with open(out_file, 'w') as out_:
-        out_.write(','.join(tmp[0].strip().split(
-            ',')[:1] + sorted(keys)) + '\n')
-        for key in sorted(tubes):
-            tmp_ = [str(tubes[key][i]) for i in sorted(tubes[key].keys())]
-            out_.write(','.join([key] + tmp_) + '\n')
+    component_types = fwd.keys()
+    df_out = df_in.filter(items=['tube_assembly_id']).copy()
+    df_out = df_out.reindex(columns=df_out.columns.tolist(
+    ) + component_types + ['total_weight'], fill_value=0.0)
+
+    # loop through tube_assembly_ids
+    for index, row in df_in.iterrows():
+        i = 1
+        while i <= 8 and not pd.isnull(row['component_id_{}'.format(i)]):
+            comp_type = rev[row['component_id_{}'.format(i)]]
+            comp_count = row['quantity_{}'.format(i)]
+            df_out.at[index, comp_type] += comp_count
+            df_out.at[index,
+                      'total_weight'] += fwd[comp_type][row['component_id_{}'.format(i)]] * comp_count
+            i += 1
+
+    # write output
+    df_out.to_csv(out_file, index=False)
+
     return out_file
 
 
@@ -311,18 +309,18 @@ def preprocess():
     print('preprocessing...')
     pre_train_path = os.path.join(MODEL_DIR, 'pre_train.csv')
     pre_test_path = os.path.join(MODEL_DIR, 'pre_test.csv')
-    # pre_bill_path = os.path.join(MODEL_DIR, 'pre_bill_of_materials.csv')
-    # pre_spec_path = os.path.join(MODEL_DIR, 'pre_specs.csv')
-    # pre_tube_path = os.path.join(MODEL_DIR, 'pre_tube.csv')
-    # merged_train_path = os.path.join(MODEL_DIR, 'merged_train.csv')
-    # merged_test_path = os.path.join(MODEL_DIR, 'merged_test.csv')
+    pre_bill_path = os.path.join(MODEL_DIR, 'pre_bill_of_materials.csv')
+    pre_spec_path = os.path.join(MODEL_DIR, 'pre_specs.csv')
+    pre_tube_path = os.path.join(MODEL_DIR, 'pre_tube.csv')
+    merged_train_path = os.path.join(MODEL_DIR, 'merged_train.csv')
+    merged_test_path = os.path.join(MODEL_DIR, 'merged_test.csv')
 
-    preprocess_train(pre_train_path)
-    print('finished preprocessing train')
-    preprocess_test(pre_test_path)
-    print('finished preprocessing test')
-    # preprocess_tube(preprocess_bill_of_materials(pre_bill_path),
-    #                 preprocess_specs(pre_spec_path), pre_tube_path)
+    # preprocess_train(pre_train_path)
+    # print('finished preprocessing train')
+    # preprocess_test(pre_test_path)
+    # print('finished preprocessing test')
+    preprocess_tube(preprocess_bill_of_materials(pre_bill_path),
+                    preprocess_specs(pre_spec_path), pre_tube_path)
     # merge_train_test_tube(pre_train_path, pre_tube_path, merged_train_path)
     # merge_train_test_tube(pre_test_path, pre_tube_path, merged_test_path)
 
