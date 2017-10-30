@@ -2,7 +2,11 @@
 Preprocess data for training and testing purposes
 """
 
+import datetime
 import os
+
+import numpy as np
+import pandas as pd
 
 # init paths
 CUR_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -26,33 +30,45 @@ def preprocess_train(out_file):
 
     Arguments:
         out_file: str - path to output file
-    CSV header:
+    In CSV header:
+        tube_assembly_id,supplier,quote_date,annual_usage,min_order_quantity,
+        bracket_pricing,quantity,cost
+    Out CSV header:
         tube_assembly_id,S-0066,S-0041,S-0072,S-0054,S-0026,S-0013,S-others,
         year,month,date,annual_usage,min_order_quantity,bracket_pricing,quantity,cost
     """
-    tmp = list()
-    with open(TRAIN_FILE, 'r') as in_:
-        tmp = in_.readlines()
-    with open(out_file, 'w') as out_:
-        head = tmp[0].strip().split(',')
-        head_tmp = [head[0]] + SUPP_ENCODE + DATE_ENCODE + head[-5:]
-        out_.write(','.join(head_tmp) + '\n')
-        for line in tmp[1:]:
-            values = line.strip().split(',')
-            # encoding for supplier
-            enc_sup = ['0', '0', '0', '0', '0', '0', '0']
-            if values[1] in SUPP_ENCODE:
-                index = SUPP_ENCODE.index(values[1])
-                enc_sup[index] = '1'
-            else:
-                enc_sup[-1] = '1'
-            # encoding for date
-            enc_date = values[2].split('-')
-            # encoding for bracket
-            enc_brac = {'Yes': '1', 'No': '0'}
-            value_tmp = [values[0]] + enc_sup + enc_date + \
-                values[-5:-3] + [enc_brac[values[-3]]] + values[-2:]
-            out_.write(','.join(value_tmp) + '\n')
+    # read training file
+    df_in = pd.read_csv(TRAIN_FILE)
+
+    # create output dataframe
+    col_subset = ['tube_assembly_id', 'annual_usage',
+                  'min_order_quantity', 'quantity', 'cost']
+    df_out = df_in.filter(items=col_subset).copy()
+    col_add = SUPP_ENCODE + DATE_ENCODE
+    df_out = df_out.reindex(
+        columns=df_out.columns.tolist() + col_add, fill_value=0)
+
+    for index, row in df_in.iterrows():
+        # encoding for supplier
+        if row['supplier'] in SUPP_ENCODE:
+            df_out.at[index, row['supplier']] = 1
+        else:
+            df_out.at[index, SUPP_ENCODE[-1]] = 1
+
+        # encoding for bracket
+        if row['bracket_pricing'] == 'Yes':
+            df_out.at[index, 'bracket_pricing'] = 1
+        else:
+            df_out.at[index, 'bracket_pricing'] = 0
+
+        # encoding for date format YYYY-MM-DD
+        date = row['quote_date'].split('-')
+        df_out.at[index, 'year'] = date[0]
+        df_out.at[index, 'month'] = date[1]
+        df_out.at[index, 'date'] = date[2]
+
+    # write to output file
+    df_out.to_csv(out_file, index=False)
 
 
 def preprocess_test(out_file):
@@ -61,33 +77,44 @@ def preprocess_test(out_file):
 
     Arguments:
         out_file: str - path to output file
-    CSV header:
+    In CSV header:
+        id,tube_assembly_id,supplier,quote_date,annual_usage,min_order_quantity,bracket_pricing,quantity
+    Out CSV header:
         tube_assembly_id,S-0066,S-0041,S-0072,S-0054,S-0026,S-0013,S-others,
         year,month,date,annual_usage,min_order_quantity,bracket_pricing,quantity
     """
-    tmp = list()
-    with open(TEST_FILE, 'r') as in_:
-        tmp = in_.readlines()
-    with open(out_file, 'w') as out_:
-        head = tmp[0].strip().split(',')
-        head_tmp = [head[1]] + SUPP_ENCODE + DATE_ENCODE + head[-4:]
-        out_.write(','.join(head_tmp) + '\n')
-        for line in tmp[1:]:
-            values = line.strip().split(',')
-            # encoding for supplier
-            enc_sup = ['0', '0', '0', '0', '0', '0', '0']
-            if values[2] in SUPP_ENCODE:
-                index = SUPP_ENCODE.index(values[2])
-                enc_sup[index] = '1'
-            else:
-                enc_sup[-1] = '1'
-            # encoding for date
-            enc_date = values[3].split('-')
-            # encoding for bracket
-            enc_brac = {'Yes': '1', 'No': '0'}
-            value_tmp = [values[1]] + enc_sup + enc_date + \
-                values[-4:-2] + [enc_brac[values[-2]]] + values[-1:]
-            out_.write(','.join(value_tmp) + '\n')
+    # read training file
+    df_in = pd.read_csv(TRAIN_FILE)
+
+    # create output dataframe
+    col_subset = ['tube_assembly_id', 'annual_usage',
+                  'min_order_quantity', 'quantity']
+    df_out = df_in.filter(items=col_subset).copy()
+    col_add = SUPP_ENCODE + DATE_ENCODE
+    df_out = df_out.reindex(
+        columns=df_out.columns.tolist() + col_add, fill_value=0)
+
+    for index, row in df_in.iterrows():
+        # encoding for supplier
+        if row['supplier'] in SUPP_ENCODE:
+            df_out.at[index, row['supplier']] = 1
+        else:
+            df_out.at[index, SUPP_ENCODE[-1]] = 1
+
+        # encoding for bracket
+        if row['bracket_pricing'] == 'Yes':
+            df_out.at[index, 'bracket_pricing'] = 1
+        else:
+            df_out.at[index, 'bracket_pricing'] = 0
+
+        # encoding for date format YYYY-MM-DD
+        date = row['quote_date'].split('-')
+        df_out.at[index, 'year'] = date[0]
+        df_out.at[index, 'month'] = date[1]
+        df_out.at[index, 'date'] = date[2]
+
+    # write to output file
+    df_out.to_csv(out_file, index=False)
 
 
 def preprocess_components():
@@ -97,24 +124,22 @@ def preprocess_components():
     Forward lookup: component type -> component_id -> weight
     Reverse lookup: component_id -> component type
     """
+    # init the component lists and lookup
     files = [i for i in os.listdir(DATA_DIR) if i[:5] == 'comp_']  # comp_*
-    forward_lookup = dict()
-    reverse_lookup = dict()
+    forward_lookup = {}
+    reverse_lookup = {}
     for file_ in files:
-        key = file_[5:-4]  # adaptor, boss, etc.
-        forward_lookup[key] = dict()
-        lines = list()
-        with open(os.path.join(DATA_DIR, file_), 'r') as in_:
-            lines = in_.readlines()[1:]
-        for line in lines:
-            values = line.strip().split(',')
-            reverse_lookup[values[0]] = key
-            weight = values[-1]
-            if values[-1] == 'NA':
-                weight = '0'
-            forward_lookup[key][values[0]] = weight
+        key = file_[5:-4]  # component type: adaptor, boss, etc.
+        forward_lookup[key] = {}
+        data = pd.read_csv(os.path.join(DATA_DIR, file_))
+        for index, row in data.iterrows():
+            reverse_lookup[row['component_id']] = key
+            if row['weight'] != 'NA':
+                forward_lookup[key][row['component_id']] = row['weight']
+            else:
+                forward_lookup[key][row['component_id']] = 0
     # handle component id 9999
-    forward_lookup['other']['9999'] = '0'
+    forward_lookup['other']['9999'] = 0
     reverse_lookup['9999'] = 'other'
     return forward_lookup, reverse_lookup
 
@@ -129,33 +154,30 @@ def preprocess_bill_of_materials(out_file):
         tube_assembly_id,adaptor,boss,elbow,float,hfl,nut,other,sleeve,
         straight,tee,threaded,total_weight
     """
+    # read bill of materials
+    df_in = pd.read_csv(os.path.join(DATA_DIR, 'bill_of_materials.csv'))
+
+    # prepare df_out
     fwd, rev = preprocess_components()
-    keys = fwd.keys() + ['total_weight']
-    tubes = dict()
-    tmp = list()
-    with open(os.path.join(DATA_DIR, 'bill_of_materials.csv'), 'r') as in_:
-        tmp = in_.readlines()
-    for line in tmp[1:]:
-        values = line.strip().split(',')
-        tubes[values[0]] = dict(zip(keys, [0] * len(keys)))
-        # calculate total weight and number of each type of components
-        in_ = 1
-        while in_ < len(values):
-            if values[in_] == 'NA':
-                break
-            else:
-                type_ = rev[values[in_]]
-                weight = int(values[in_ + 1])
-                tubes[values[0]][type_] += weight
-                tubes[values[0]][
-                    'total_weight'] += float(fwd[type_][values[in_]]) * weight
-            in_ += 2
-    with open(out_file, 'w') as out_:
-        out_.write(','.join(tmp[0].strip().split(
-            ',')[:1] + sorted(keys)) + '\n')
-        for key in sorted(tubes):
-            tmp_ = [str(tubes[key][i]) for i in sorted(tubes[key].keys())]
-            out_.write(','.join([key] + tmp_) + '\n')
+    component_types = fwd.keys()
+    df_out = df_in.filter(items=['tube_assembly_id']).copy()
+    df_out = df_out.reindex(columns=df_out.columns.tolist(
+    ) + component_types + ['total_weight'], fill_value=0.0)
+
+    # loop through tube_assembly_ids
+    for index, row in df_in.iterrows():
+        i = 1
+        while i <= 8 and not pd.isnull(row['component_id_{}'.format(i)]):
+            comp_type = rev[row['component_id_{}'.format(i)]]
+            comp_count = row['quantity_{}'.format(i)]
+            df_out.at[index, comp_type] += comp_count
+            df_out.at[index,
+                      'total_weight'] += fwd[comp_type][row['component_id_{}'.format(i)]] * comp_count
+            i += 1
+
+    # write output
+    df_out.to_csv(out_file, index=False)
+
     return out_file
 
 
@@ -293,11 +315,16 @@ def preprocess():
     merged_train_path = os.path.join(MODEL_DIR, 'merged_train.csv')
     merged_test_path = os.path.join(MODEL_DIR, 'merged_test.csv')
 
-    preprocess_train(pre_train_path)
-    preprocess_test(pre_test_path)
+    # preprocess_train(pre_train_path)
+    # print('finished preprocessing train')
+    # preprocess_test(pre_test_path)
+    # print('finished preprocessing test')
     preprocess_tube(preprocess_bill_of_materials(pre_bill_path),
                     preprocess_specs(pre_spec_path), pre_tube_path)
-    merge_train_test_tube(pre_train_path, pre_tube_path, merged_train_path)
-    merge_train_test_tube(pre_test_path, pre_tube_path, merged_test_path)
+    # merge_train_test_tube(pre_train_path, pre_tube_path, merged_train_path)
+    # merge_train_test_tube(pre_test_path, pre_tube_path, merged_test_path)
 
-    return merged_train_path, merged_test_path
+    # return merged_train_path, merged_test_path
+
+
+preprocess()
