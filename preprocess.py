@@ -2,10 +2,8 @@
 Preprocess data for training and testing purposes
 """
 
-import datetime
 import os
 
-import numpy as np
 import pandas as pd
 
 # init paths
@@ -69,6 +67,7 @@ def preprocess_train(out_file):
 
     # write to output file
     df_out.to_csv(out_file, index=False)
+    print('finished preprocessing train')
 
 
 def preprocess_test(out_file):
@@ -78,13 +77,14 @@ def preprocess_test(out_file):
     Arguments:
         out_file: str - path to output file
     In CSV header:
-        id,tube_assembly_id,supplier,quote_date,annual_usage,min_order_quantity,bracket_pricing,quantity
+        id,tube_assembly_id,supplier,quote_date,annual_usage,min_order_quantity,
+        bracket_pricing,quantity
     Out CSV header:
         tube_assembly_id,S-0066,S-0041,S-0072,S-0054,S-0026,S-0013,S-others,
         year,month,date,annual_usage,min_order_quantity,bracket_pricing,quantity
     """
     # read training file
-    df_in = pd.read_csv(TRAIN_FILE)
+    df_in = pd.read_csv(TEST_FILE)
 
     # create output dataframe
     col_subset = ['tube_assembly_id', 'annual_usage',
@@ -115,6 +115,7 @@ def preprocess_test(out_file):
 
     # write to output file
     df_out.to_csv(out_file, index=False)
+    print('finished preprocessing test')
 
 
 def preprocess_components():
@@ -132,7 +133,7 @@ def preprocess_components():
         key = file_[5:-4]  # component type: adaptor, boss, etc.
         forward_lookup[key] = {}
         data = pd.read_csv(os.path.join(DATA_DIR, file_))
-        for index, row in data.iterrows():
+        for _, row in data.iterrows():
             reverse_lookup[row['component_id']] = key
             if row['weight'] != 'NA':
                 forward_lookup[key][row['component_id']] = row['weight']
@@ -141,6 +142,7 @@ def preprocess_components():
     # handle component id 9999
     forward_lookup['other']['9999'] = 0
     reverse_lookup['9999'] = 'other'
+    print('finished preprocessing components')
     return forward_lookup, reverse_lookup
 
 
@@ -169,14 +171,15 @@ def preprocess_bill_of_materials(out_file):
         i = 1
         while i <= 8 and not pd.isnull(row['component_id_{}'.format(i)]):
             comp_type = rev[row['component_id_{}'.format(i)]]
-            comp_count = row['quantity_{}'.format(i)]
-            df_out.at[index, comp_type] += comp_count
+            comp_cnt = row['quantity_{}'.format(i)]
+            df_out.at[index, comp_type] += comp_cnt
             df_out.at[index,
-                      'total_weight'] += fwd[comp_type][row['component_id_{}'.format(i)]] * comp_count
+                      'total_weight'] += fwd[comp_type][row['component_id_{}'.format(i)]] * comp_cnt
             i += 1
 
     # write output
     df_out.to_csv(out_file, index=False)
+    print('finished preprocessing bill of materials')
 
     return out_file
 
@@ -190,25 +193,27 @@ def preprocess_specs(out_file):
     CSV header:
         tube_assembly_id, with_spec, no_spec
     """
-    tmp = list()
-    with open(os.path.join(DATA_DIR, 'specs.csv'), 'r') as in_:
-        tmp = in_.readlines()
-    with open(out_file, 'w') as out_:
-        out_.write('tube_assembly_id,with_spec,no_spec\n')
-        for line in tmp[1:]:
-            values = line.strip().split(',')
-            tmp_ = list()
-            in_ = 0
-            while in_ + 1 < len(values):
-                if values[in_ + 1] == 'NA':
-                    break
-                else:
-                    in_ += 1
-            if in_ == 0:
-                tmp_ = [values[0], '0', str(in_)]
-            else:
-                tmp_ = [values[0], '1', str(in_)]
-            out_.write(','.join(tmp_) + '\n')
+    # read specs file
+    df_in = pd.read_csv(os.path.join(DATA_DIR, 'specs.csv'))
+
+    # create output dataframe
+    df_out = df_in.filter(items=['tube_assembly_id']).copy()
+    col_add = ['with_spec', 'no_spec']
+    df_out = df_out.reindex(
+        columns=df_out.columns.tolist() + col_add, fill_value=0)
+
+    for index, row in df_in.iterrows():
+        no_spec = row[1:].count()
+        df_out.at[index, 'no_spec'] = no_spec
+        if no_spec:
+            df_out.at[index, 'with_spec'] = 1
+        else:
+            df_out.at[index, 'with_spec'] = 0
+
+    # write to output file
+    df_out.to_csv(out_file, index=False)
+    print('finished preprocessing specs')
+
     return out_file
 
 
@@ -226,41 +231,36 @@ def preprocess_tube(pre_bill_of_materials, pre_specs, out_file):
         elbow,float,hfl,nut,other,sleeve,straight,tee,threaded,total_weight,
         with_spec,no_spec
     """
-    # encoding for end_form
-    enc_form = dict()
-    with open(os.path.join(DATA_DIR, 'tube_end_form.csv')) as in_:
-        tmp_tube = in_.readlines()[1:]
-        for line in tmp_tube:
-            values = line.strip().split(',')
-            if values[1] == 'Yes':
-                enc_form[values[0]] = '1'
-            else:
-                enc_form[values[0]] = '0'
-    enc_form['NONE'] = '0'  # handle NONE
+    # read tube_end_form file
+    df_end_form = pd.read_csv(os.path.join(DATA_DIR, 'tube_end_form.csv'))
 
-    tmp_tube = list()  # overwrite to save memory
-    tmp_bill = list()
-    tmp_specs = list()
-    enc_end = {'Y': '1', 'N': '0'}
-    with open(TUBE_FILE, 'r') as in_:
-        tmp_tube = in_.readlines()
-    with open(pre_bill_of_materials, 'r') as in_:
-        tmp_bill = in_.readlines()
-    with open(pre_specs, 'r') as in_:
-        tmp_specs = in_.readlines()
-    with open(out_file, 'w') as out_:
-        header = tmp_tube[0].strip().split(',')[:1] + tmp_tube[0].strip().split(',')[
-            2:-1] + tmp_bill[0].strip().split(',')[1:] + tmp_specs[0].strip().split(',')[1:]
-        out_.write(','.join(header) + '\n')
-        in_ = 1
-        while in_ < len(tmp_tube):
-            v_tube = tmp_tube[in_].strip().split(',')
-            v_bill = tmp_bill[in_].strip().split(',')
-            v_spe = tmp_specs[in_].strip().split(',')
-            content = v_tube[:1] + v_tube[2:7] + [enc_end[v_tube[i]] for i in range(7, 11)] + [
-                enc_form[v_tube[i]] for i in range(11, 13)] + v_tube[13:-1] + v_bill[1:] + v_spe[1:]
-            out_.write(','.join(content) + '\n')
-            in_ += 1
+    # encoding for end_form
+    enc_form = {}
+    for _, row in df_end_form.iterrows():
+        if row['forming'] == 'Yes':
+            enc_form[row['end_form_id']] = 1
+        else:
+            enc_form[row['end_form_id']] = 0
+    enc_form['NONE'] = 0  # handle NONE
+
+    # process tube in-memory
+    repl_ = {k: {'Y': 1, 'N': 0}
+             for k in ['end_a_1x', 'end_a_2x', 'end_x_1x', 'end_x_2x']}
+    repl_['end_a'] = enc_form
+    repl_['end_x'] = enc_form
+    df_tube = pd.read_csv(TUBE_FILE)
+    df_tube.drop(['material_id', 'other'], axis=1, inplace=True)
+    df_tube.replace(repl_, inplace=True)
+
+    # merge with bill_of_materials and specs
+    df_bill = pd.read_csv(pre_bill_of_materials)
+    df_specs = pd.read_csv(pre_specs)
+    df_out = pd.merge(df_tube, df_bill, on='tube_assembly_id')
+    df_out = pd.merge(df_out, df_specs, on='tube_assembly_id')
+
+    # write to output file
+    df_out.to_csv(out_file, index=False)
+    print('finished preprocessing tubes')
 
 
 def merge_train_test_tube(in_train_test_file, in_tube_file, out_file):
@@ -274,32 +274,16 @@ def merge_train_test_tube(in_train_test_file, in_tube_file, out_file):
     CSV header:
         tube_assembly_id,[tube_contents],[train/test_contents]
     """
-    tmp_train_test = list()
-    tmp_tube = list()
-    with open(in_train_test_file, 'r') as in_:
-        tmp_train_test = in_.readlines()
-    with open(in_tube_file, 'r') as in_:
-        tmp_tube = in_.readlines()
-    with open(out_file, 'w') as out_:
-        head_tmp = tmp_tube[0].strip().split(
-            ',') + tmp_train_test[0].strip().split(',')[1:]
-        out_.write(','.join(head_tmp) + '\n')
-        tr_ = 1
-        tu_ = 1
-        while tr_ < len(tmp_train_test) and tu_ < len(tmp_tube):
-            train_tmp = tmp_train_test[tr_].strip().split(',')
-            tube_tmp = tmp_tube[tu_].strip().split(',')
-            if train_tmp[0] < tube_tmp[0]:
-                tr_ += 1
-                continue
-            elif train_tmp[0] > tube_tmp[0]:
-                tu_ += 1
-                continue
-            else:
-                value_tmp = tube_tmp + train_tmp[1:]
-                out_.write(','.join(value_tmp) + '\n')
-                tr_ += 1
-                continue
+    # load data
+    df_in = pd.read_csv(in_train_test_file)
+    df_tube = pd.read_csv(in_tube_file)
+
+    # merge
+    df_out = pd.merge(df_in, df_tube, on='tube_assembly_id')
+
+    # write output
+    df_out.to_csv(out_file, index=False)
+    print('finished merging')
 
 
 def preprocess():
@@ -315,16 +299,11 @@ def preprocess():
     merged_train_path = os.path.join(MODEL_DIR, 'merged_train.csv')
     merged_test_path = os.path.join(MODEL_DIR, 'merged_test.csv')
 
-    # preprocess_train(pre_train_path)
-    # print('finished preprocessing train')
-    # preprocess_test(pre_test_path)
-    # print('finished preprocessing test')
+    preprocess_train(pre_train_path)
+    preprocess_test(pre_test_path)
     preprocess_tube(preprocess_bill_of_materials(pre_bill_path),
                     preprocess_specs(pre_spec_path), pre_tube_path)
-    # merge_train_test_tube(pre_train_path, pre_tube_path, merged_train_path)
-    # merge_train_test_tube(pre_test_path, pre_tube_path, merged_test_path)
+    merge_train_test_tube(pre_train_path, pre_tube_path, merged_train_path)
+    merge_train_test_tube(pre_test_path, pre_tube_path, merged_test_path)
 
-    # return merged_train_path, merged_test_path
-
-
-preprocess()
+    return merged_train_path, merged_test_path
