@@ -190,26 +190,31 @@ def preprocess_specs(out_file):
     CSV header:
         tube_assembly_id, with_spec, no_spec
     """
-    tmp = list()
-    with open(os.path.join(DATA_DIR, 'specs.csv'), 'r') as in_:
-        tmp = in_.readlines()
-    with open(out_file, 'w') as out_:
-        out_.write('tube_assembly_id,with_spec,no_spec\n')
-        for line in tmp[1:]:
-            values = line.strip().split(',')
-            tmp_ = list()
-            in_ = 0
-            while in_ + 1 < len(values):
-                if values[in_ + 1] == 'NA':
-                    break
-                else:
-                    in_ += 1
-            if in_ == 0:
-                tmp_ = [values[0], '0', str(in_)]
+
+    # read specs file
+    df_in = pd.read_csv(os.path.join(DATA_DIR, 'specs.csv'))
+    col_headers = df_in.columns.values.tolist()
+
+    # create output dataframe
+    df_out = df_in.filter(items='tube_assembly_id').copy()
+    col_add = ['with_spec', 'no_spec']
+    df_out = df_out.reindex(columns=df_out.columns.tolist() + col_add, fill_value=0)
+
+    for index, row in df_in:
+        in_ = 0
+        while in_ + 1 < len(col_headers):
+            if row[col_headers[in_ + 1]] == 'NA':
+                break
             else:
-                tmp_ = [values[0], '1', str(in_)]
-            out_.write(','.join(tmp_) + '\n')
-    return out_file
+                in_ += 1
+        if in_ == 0:
+            df_out.at[index, 'with_spec'] = 0
+        else:
+            df_out.at[index, 'with_spec'] = 1
+        df_out.at[index, 'no_spec'] = str(in_)
+
+    # write to output file
+    df_out.to_csv(out_file)
 
 
 def preprocess_tube(pre_bill_of_materials, pre_specs, out_file):
@@ -225,6 +230,36 @@ def preprocess_tube(pre_bill_of_materials, pre_specs, out_file):
         end_a_1x,end_a_2x,end_x_1x,end_x_2x,end_a,end_x,adaptor,boss,
         elbow,float,hfl,nut,other,sleeve,straight,tee,threaded,total_weight,
         with_spec,no_spec
+    """
+
+    # encoding for end_form
+    enc_form = dict()
+    # read tube_end_form file
+    df_in1 = pd.read_csv(os.path.join(DATA_DIR, 'tube_end_form.csv'))
+    col_headers1 = df_in1.columns.values.tolist()
+
+    for index, row in df_in1:
+        if row[col_headers1[1]] == 'Yes':
+            enc_form[row[col_headers1[0]]] = '1'
+        else:
+            enc_form[row[col_headers1[0]]] = '0'
+    enc_form['NONE'] = '0'  # handle NONE
+
+    enc_end = {'Y': '1', 'N': '0'}
+    df_in2 = pd.read_csv(TUBE_FILE)
+    col_headers2 = df_in2.columns.values.tolist()
+    df_in3 = pd.read_csv(pre_bill_of_materials)
+    col_headers3 = df_in3.columns.values.tolist()
+    df_in4 = pd.read_csv(pre_specs)
+    col_headers4 = df_in4.columns.values.tolist()
+
+    # create output dataframe
+    df_out = df_in2.filter(items=col_headers2[0]).copy()
+    col_add = col_headers2[2:-1] + col_headers3[1:] + col_headers4[1:]
+    df_out = df_out.reindex(columns=df_out.columns.tolist() + col_add, fill_value=0)
+
+    # ---------------------------------------------
+    # old code
     """
     # encoding for end_form
     enc_form = dict()
@@ -261,6 +296,7 @@ def preprocess_tube(pre_bill_of_materials, pre_specs, out_file):
                 enc_form[v_tube[i]] for i in range(11, 13)] + v_tube[13:-1] + v_bill[1:] + v_spe[1:]
             out_.write(','.join(content) + '\n')
             in_ += 1
+    """
 
 
 def merge_train_test_tube(in_train_test_file, in_tube_file, out_file):
