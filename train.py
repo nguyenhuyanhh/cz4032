@@ -134,7 +134,3 @@ def train(train_set, config_file=os.path.join(CUR_DIR, 'config.json'),
             print('performing cross-validation...')
             eval_ = -xgb_evaluate()
             print('final test rmse: {}'.format(eval_))
-
-
-train(os.path.join(MODEL_DIR, 'merged_train.csv'), config_file=os.path.join(CUR_DIR, 'config.json'),
-      output_model=True, bayes_opt=False)

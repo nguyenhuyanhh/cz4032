@@ -307,6 +307,3 @@ def preprocess():
     merge_train_test_tube(pre_test_path, pre_tube_path, merged_test_path)
 
     return merged_train_path, merged_test_path
-
-
-preprocess()
