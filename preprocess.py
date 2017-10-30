@@ -2,9 +2,10 @@
 Preprocess data for training and testing purposes
 """
 
-import os
-import pandas as pd
 import datetime
+import os
+
+import pandas as pd
 
 # init paths
 CUR_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -38,35 +39,35 @@ def preprocess_train(out_file):
     # read training file
     df_in = pd.read_csv(TRAIN_FILE)
 
-    col_headers = df_in.columns.values.tolist()
-    col_subset = [col_headers[0]] + col_headers[-5:]
-
     # create output dataframe
+    col_subset = ['tube_assembly_id', 'annual_usage',
+                  'min_order_quantity', 'quantity', 'cost']
     df_out = df_in.filter(items=col_subset).copy()
     col_add = SUPP_ENCODE + DATE_ENCODE
-    df_out = df_out.reindex(columns=df_out.columns.tolist() + col_add, fill_value=0)
+    df_out = df_out.reindex(
+        columns=df_out.columns.tolist() + col_add, fill_value=0)
 
     for index, row in df_in.iterrows():
         # encoding for supplier
         if row['supplier'] in SUPP_ENCODE:
-            df_out.set_value(index, row['supplier'], 1)
+            df_out.at[index, row['supplier']] = 1
         else:
-            df_out.set_value(index, SUPP_ENCODE[-1], 1)
+            df_out.at[index, SUPP_ENCODE[-1]] = 1
 
         # encoding for bracket
         if row['bracket_pricing'] == 'Yes':
-            df_out.set_value(index, row['bracket_pricing'], 1)
+            df_out.at[index, 'bracket_pricing'] = 1
         else:
-            df_out.set_value(index, row['bracket_pricing'], 0)
+            df_out.at[index, 'bracket_pricing'] = 0
 
         # encoding for date format YYYY-MM-DD
         date = row['quote_date'].split('-')
-        df_out.set_value(index, 'year', date[0])
-        df_out.set_value(index, 'month', date[1])
-        df_out.set_value(index, 'date', date[2])
+        df_out.at[index, 'year'] = date[0]
+        df_out.at[index, 'month'] = date[1]
+        df_out.at[index, 'date'] = date[2]
 
     # write to output file
-    df_out.to_csv(out_file)
+    df_out.to_csv(out_file, index=False)
 
 
 def preprocess_test(out_file):
@@ -81,39 +82,38 @@ def preprocess_test(out_file):
         tube_assembly_id,S-0066,S-0041,S-0072,S-0054,S-0026,S-0013,S-others,
         year,month,date,annual_usage,min_order_quantity,bracket_pricing,quantity
     """
-
     # read training file
-    df_in = pd.read_csv(TEST_FILE)
-
-    col_headers = df_in.columns.values.tolist()
-    col_subset = [col_headers[1]] + col_headers[-4:]
+    df_in = pd.read_csv(TRAIN_FILE)
 
     # create output dataframe
+    col_subset = ['tube_assembly_id', 'annual_usage',
+                  'min_order_quantity', 'quantity']
     df_out = df_in.filter(items=col_subset).copy()
     col_add = SUPP_ENCODE + DATE_ENCODE
-    df_out = df_out.reindex(columns=df_out.columns.tolist() + col_add, fill_value=0)
+    df_out = df_out.reindex(
+        columns=df_out.columns.tolist() + col_add, fill_value=0)
 
     for index, row in df_in.iterrows():
         # encoding for supplier
         if row['supplier'] in SUPP_ENCODE:
-            df_out.set_value(index, row['supplier'], 1)
+            df_out.at[index, row['supplier']] = 1
         else:
-            df_out.set_value(index, SUPP_ENCODE[-1], 1)
+            df_out.at[index, SUPP_ENCODE[-1]] = 1
 
         # encoding for bracket
         if row['bracket_pricing'] == 'Yes':
-            df_out.set_value(index, row['bracket_pricing'], 1)
+            df_out.at[index, 'bracket_pricing'] = 1
         else:
-            df_out.set_value(index, row['bracket_pricing'], 0)
+            df_out.at[index, 'bracket_pricing'] = 0
 
         # encoding for date format YYYY-MM-DD
         date = row['quote_date'].split('-')
-        df_out.set_value(index, 'year', date[0])
-        df_out.set_value(index, 'month', date[1])
-        df_out.set_value(index, 'date', date[2])
+        df_out.at[index, 'year'] = date[0]
+        df_out.at[index, 'month'] = date[1]
+        df_out.at[index, 'date'] = date[2]
 
     # write to output file
-    df_out.to_csv(out_file)
+    df_out.to_csv(out_file, index=False)
 
 
 def preprocess_components():
@@ -123,22 +123,20 @@ def preprocess_components():
     Forward lookup: component type -> component_id -> weight
     Reverse lookup: component_id -> component type
     """
+    # init the component lists and lookup
     files = [i for i in os.listdir(DATA_DIR) if i[:5] == 'comp_']  # comp_*
-    forward_lookup = dict()
-    reverse_lookup = dict()
+    forward_lookup = {}
+    reverse_lookup = {}
     for file_ in files:
-        key = file_[5:-4]  # adaptor, boss, etc.
-        forward_lookup[key] = dict()
-        lines = list()
-        with open(os.path.join(DATA_DIR, file_), 'r') as in_:
-            lines = in_.readlines()[1:]
-        for line in lines:
-            values = line.strip().split(',')
-            reverse_lookup[values[0]] = key
-            weight = values[-1]
-            if values[-1] == 'NA':
-                weight = '0'
-            forward_lookup[key][values[0]] = weight
+        key = file_[5:-4]  # component type: adaptor, boss, etc.
+        forward_lookup[key] = {}
+        data = pd.read_csv(os.path.join(DATA_DIR, 'file_'))
+        for index, row in data.iterrows():
+            reverse_lookup[row['component_id']] = key
+            if row['weight'] != 'NA':
+                forward_lookup[key][row['component_id']] = row['weight']
+            else:
+                forward_lookup[key][row['component_id']] = 0
     # handle component id 9999
     forward_lookup['other']['9999'] = '0'
     reverse_lookup['9999'] = 'other'
@@ -313,17 +311,22 @@ def preprocess():
     print('preprocessing...')
     pre_train_path = os.path.join(MODEL_DIR, 'pre_train.csv')
     pre_test_path = os.path.join(MODEL_DIR, 'pre_test.csv')
-    pre_bill_path = os.path.join(MODEL_DIR, 'pre_bill_of_materials.csv')
-    pre_spec_path = os.path.join(MODEL_DIR, 'pre_specs.csv')
-    pre_tube_path = os.path.join(MODEL_DIR, 'pre_tube.csv')
-    merged_train_path = os.path.join(MODEL_DIR, 'merged_train.csv')
-    merged_test_path = os.path.join(MODEL_DIR, 'merged_test.csv')
+    # pre_bill_path = os.path.join(MODEL_DIR, 'pre_bill_of_materials.csv')
+    # pre_spec_path = os.path.join(MODEL_DIR, 'pre_specs.csv')
+    # pre_tube_path = os.path.join(MODEL_DIR, 'pre_tube.csv')
+    # merged_train_path = os.path.join(MODEL_DIR, 'merged_train.csv')
+    # merged_test_path = os.path.join(MODEL_DIR, 'merged_test.csv')
 
     preprocess_train(pre_train_path)
+    print('finished preprocessing train')
     preprocess_test(pre_test_path)
-    preprocess_tube(preprocess_bill_of_materials(pre_bill_path),
-                    preprocess_specs(pre_spec_path), pre_tube_path)
-    merge_train_test_tube(pre_train_path, pre_tube_path, merged_train_path)
-    merge_train_test_tube(pre_test_path, pre_tube_path, merged_test_path)
+    print('finished preprocessing test')
+    # preprocess_tube(preprocess_bill_of_materials(pre_bill_path),
+    #                 preprocess_specs(pre_spec_path), pre_tube_path)
+    # merge_train_test_tube(pre_train_path, pre_tube_path, merged_train_path)
+    # merge_train_test_tube(pre_test_path, pre_tube_path, merged_test_path)
 
-    return merged_train_path, merged_test_path
+    # return merged_train_path, merged_test_path
+
+
+preprocess()
