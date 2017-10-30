@@ -84,7 +84,7 @@ def preprocess_test(out_file):
         year,month,date,annual_usage,min_order_quantity,bracket_pricing,quantity
     """
     # read training file
-    df_in = pd.read_csv(TRAIN_FILE)
+    df_in = pd.read_csv(TEST_FILE)
 
     # create output dataframe
     col_subset = ['tube_assembly_id', 'annual_usage',
