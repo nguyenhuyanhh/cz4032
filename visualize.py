@@ -2,10 +2,11 @@
 Visualize training & predicted data
 """
 
-import pandas as pd
 import os
-import matplotlib.pyplot as plt
+from collections import Counter
 
+import matplotlib.pyplot as plt
+import pandas as pd
 
 # define stuff here
 CUR_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -14,31 +15,30 @@ TRAIN_FILE = os.path.join(DATA_DIR, 'train_set.csv')
 
 
 def visualize_suppliers():
+    """Visualize the distribution of suppliers."""
     # read training file
     df_in = pd.read_csv(TRAIN_FILE)
 
     # calculate distribution of suppliers
-    supp_dist = dict()
-    for index, row in df_in.iterrows():
-        # encoding for supplier
-        sup = row['supplier']
-        if sup not in supp_dist.keys():
-            supp_dist[sup] = 1
-        else:
-            old_val = supp_dist[sup]
-            supp_dist[sup] = old_val + 1
+    supp_dist = Counter(df_in['supplier'])
 
     # filter significant suppliers
     # take arbitrary value 100 as threshold
-    new_supp_dist = dict()
+    new_supp_dist = {}
     new_supp_dist['Others'] = 0
-    for key,value in supp_dist.items():
+    for key, value in supp_dist.items():
         if value > 100:
             new_supp_dist[key] = value
         else:
-            old_val = new_supp_dist['Others']
-            new_supp_dist['Others'] = old_val + value
+            new_supp_dist['Others'] += value
 
-    plt.bar(range(len(new_supp_dist)), new_supp_dist.values(), align='center')
-    plt.xticks(range(len(new_supp_dist)), list(new_supp_dist.keys()))
+    # sort and plot
+    values = sorted(new_supp_dist.values(), reverse=True)
+    keys = sorted(new_supp_dist, key=new_supp_dist.get, reverse=True)
+    plt.bar(range(len(values)), values, align='center')
+    plt.xticks(range(len(values)), keys)
     plt.show()
+
+
+if __name__ == '__main__':
+    visualize_suppliers()
