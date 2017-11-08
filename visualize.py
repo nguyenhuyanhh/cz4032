@@ -12,6 +12,9 @@ import pandas as pd
 CUR_DIR = os.path.dirname(os.path.realpath(__file__))
 DATA_DIR = os.path.join(CUR_DIR, 'competition_data')
 TRAIN_FILE = os.path.join(DATA_DIR, 'train_set.csv')
+VIZ_DIR = os.path.join(CUR_DIR, 'viz/')
+if not os.path.exists(VIZ_DIR):
+    os.makedirs(VIZ_DIR)
 
 
 def visualize_suppliers():
@@ -36,7 +39,9 @@ def visualize_suppliers():
     values = sorted(new_supp_dist.values(), reverse=True)
     keys = sorted(new_supp_dist, key=new_supp_dist.get, reverse=True)
     plt.bar(range(len(values)), values, align='center')
-    plt.xticks(range(len(values)), keys)
+    plt.xticks(range(len(values)), keys, rotation=45)
+    plt.suptitle('Distribution of Suppliers')
+    plt.savefig(os.path.join(VIZ_DIR, 'visualize_suppliers.png'))
     plt.show()
 
 
