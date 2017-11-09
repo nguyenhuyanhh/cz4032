@@ -128,8 +128,10 @@ def preprocess_bill_of_materials(out_file):
     fwd, rev = preprocess_components()
     component_types = fwd.keys()
     df_out = df_in.filter(items=['tube_assembly_id']).copy()
-    df_out = df_out.reindex(columns=df_out.columns.tolist(
-    ) + component_types + ['total_weight'], fill_value=0.0)
+    df_out = df_out.reindex(
+        columns=['tube_assembly_id'] + component_types, fill_value=0)
+    df_out = df_out.reindex(
+        columns=['tube_assembly_id'] + component_types + ['total_weight'], fill_value=0.0)
 
     # loop through tube_assembly_ids
     for index, row in df_in.iterrows():
