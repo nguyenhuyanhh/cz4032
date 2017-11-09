@@ -246,7 +246,7 @@ def merge_train_test_tube(in_train_test_file, in_tube_file, out_file):
     df_tube = pd.read_csv(in_tube_file)
 
     # merge
-    df_out = pd.merge(df_in, df_tube, on='tube_assembly_id')
+    df_out = pd.merge(df_tube, df_in, on='tube_assembly_id')
 
     # write output
     df_out.to_csv(out_file, index=False)
