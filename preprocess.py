@@ -39,13 +39,13 @@ def preprocess_train_test(train, out_file):
     # read source file
     if train:
         df_in = pd.read_csv(TRAIN_FILE)
-        col_subset = ['tube_assembly_id', 'annual_usage',
-                      'min_order_quantity', 'bracket_pricing', 'quantity', 'cost']
+        col_subset = ['annual_usage', 'min_order_quantity',
+                      'bracket_pricing', 'quantity', 'cost']
         message = 'finished preprocessing train'
     else:
         df_in = pd.read_csv(TEST_FILE)
-        col_subset = ['tube_assembly_id', 'annual_usage',
-                      'min_order_quantity', 'bracket_pricing', 'quantity']
+        col_subset = ['annual_usage', 'min_order_quantity',
+                      'bracket_pricing', 'quantity']
         message = 'finished preprocessing test'
 
     # encoding for supplier
@@ -60,22 +60,22 @@ def preprocess_train_test(train, out_file):
     df_supp.drop('supplier', axis=1, inplace=True)
 
     # encoding for date
-    df_date = df_in[['tube_assembly_id', 'quote_date']]
+    df_date = df_in[['quote_date']]
     df_date = df_date.reindex(
-        columns=['tube_assembly_id', 'quote_date'] + date_encode, fill_value=0)
+        columns=['quote_date'] + date_encode, fill_value=0)
     for index, row in df_date.iterrows():
         date = row['quote_date'].split('-')
         df_date.at[index, 'year'] = date[0]
         df_date.at[index, 'month'] = date[1]
         df_date.at[index, 'date'] = date[2]
-    df_date.drop('quote_date', axis=1, inplace=True)
+    df_date.drop(['quote_date'], axis=1, inplace=True)
 
     # encoding for bracket_pricing'
     enc_ = {'bracket_pricing': {'Yes': 1, 'No': 0}}
 
     # create output dataframe
-    df_out = pd.merge(df_supp, df_date, on='tube_assembly_id')
-    df_out = pd.merge(df_out, df_in[col_subset], on='tube_assembly_id')
+    df_out = pd.concat([df_supp, df_date], axis=1)
+    df_out = pd.concat([df_out, df_in[col_subset]], axis=1)
     df_out.replace(enc_, inplace=True)
 
     # write to output file
