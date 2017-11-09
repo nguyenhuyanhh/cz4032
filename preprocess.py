@@ -33,8 +33,8 @@ def preprocess_train_test(train, out_file):
         annual_usage,min_order_quantity,bracket_pricing,quantity,[cost]
     """
     # constants
-    supp_encode = ['S-0066', 'S-0041', 'S-0072',
-                   'S-0054', 'S-0026', 'S-0013', 'S-others']
+    supp_encode = ['S-0066', 'S-0041', 'S-0072', 'S-0054',
+                   'S-0026', 'S-0013', 'S-0058', 'S-0064', 'S-others']
     date_encode = ['year', 'month', 'date']
     # read source file
     if train:
