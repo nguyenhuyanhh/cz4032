@@ -12,19 +12,14 @@ DATA_DIR = os.path.join(CUR_DIR, 'competition_data')
 MODEL_DIR = os.path.join(CUR_DIR, 'model_xgboost')
 if not os.path.exists(MODEL_DIR):
     os.makedirs(MODEL_DIR)
-# inputs
-TRAIN_FILE = os.path.join(DATA_DIR, 'train_set.csv')
-TUBE_FILE = os.path.join(DATA_DIR, 'tube.csv')
-TEST_FILE = os.path.join(DATA_DIR, 'test_set.csv')
 
 
-def preprocess_train_test(train, out_file):
+def preprocess_train_test(train_test):
     """
     Preprocess train/test_set.csv, with one-hot encoding for supplier and bracket
 
     Arguments:
-        train: boolean - specify whether is train or test set
-        out_file: str - path to output file
+        train_test: boolean - specify whether is train (True) or test (False)
     In CSV header:
         tube_assembly_id,supplier,quote_date,annual_usage,min_order_quantity,
         bracket_pricing,quantity,[cost]
@@ -37,13 +32,13 @@ def preprocess_train_test(train, out_file):
                    'S-0026', 'S-0013', 'S-0058', 'S-0064', 'S-others']
     date_encode = ['year', 'month', 'date']
     # read source file
-    if train:
-        df_in = pd.read_csv(TRAIN_FILE)
+    if train_test:
+        df_in = pd.read_csv(os.path.join(DATA_DIR, 'train_set.csv'))
         col_subset = ['annual_usage', 'min_order_quantity',
                       'bracket_pricing', 'quantity', 'cost']
         message = 'finished preprocessing train'
     else:
-        df_in = pd.read_csv(TEST_FILE)
+        df_in = pd.read_csv(os.path.join(DATA_DIR, 'test_set.csv'))
         col_subset = ['annual_usage', 'min_order_quantity',
                       'bracket_pricing', 'quantity']
         message = 'finished preprocessing test'
@@ -78,9 +73,8 @@ def preprocess_train_test(train, out_file):
     df_out = pd.concat([df_out, df_in[col_subset]], axis=1)
     df_out.replace(enc_, inplace=True)
 
-    # write to output file
-    df_out.to_csv(out_file, index=False)
     print(message)
+    return df_out
 
 
 def preprocess_components():
@@ -111,12 +105,10 @@ def preprocess_components():
     return forward_lookup, reverse_lookup
 
 
-def preprocess_bill_of_materials(out_file):
+def preprocess_bill_of_materials():
     """
     Preprocess bill_of_materials.csv.
 
-    Arguments:
-        out_file: str - path to output file
     CSV header:
         tube_assembly_id,adaptor,boss,elbow,float,hfl,nut,other,sleeve,
         straight,tee,threaded,total_weight
@@ -142,19 +134,14 @@ def preprocess_bill_of_materials(out_file):
                       'total_weight'] += fwd[comp_type][row['component_id_{}'.format(i)]] * comp_cnt
             i += 1
 
-    # write output
-    df_out.to_csv(out_file, index=False)
     print('finished preprocessing bill of materials')
+    return df_out
 
-    return out_file
 
-
-def preprocess_specs(out_file):
+def preprocess_specs():
     """
     Preprocess specs.csv.
 
-    Arguments:
-        out_file: str - path to output file
     CSV header:
         tube_assembly_id, with_spec, no_spec
     """
@@ -175,21 +162,17 @@ def preprocess_specs(out_file):
         else:
             df_out.at[index, 'with_spec'] = 0
 
-    # write to output file
-    df_out.to_csv(out_file, index=False)
     print('finished preprocessing specs')
+    return df_out
 
-    return out_file
 
-
-def preprocess_tube(pre_bill_of_materials, pre_specs, out_file):
+def preprocess_tube(pre_bill_of_materials, pre_specs):
     """
     Preprocessing tube.csv, with input from bill_of_materials.csv and specs.csv
 
     Arguments:
-        pre_bill_of_materials: str - path to preprocessed bill of materials
-        pre_specs: str - path to preprocessed specs
-        out_file: str - path to output file
+        pre_bill_of_materials: pd.DataFrame() - preprocessed bill of materials
+        pre_specs: pd.DataFrame() - preprocessed specs
     CSV header:
         tube_assembly_id,diameter,wall,length,num_bends,bend_radius,
         end_a_1x,end_a_2x,end_x_1x,end_x_2x,end_a,end_x,adaptor,boss,
@@ -213,38 +196,31 @@ def preprocess_tube(pre_bill_of_materials, pre_specs, out_file):
              for k in ['end_a_1x', 'end_a_2x', 'end_x_1x', 'end_x_2x']}
     repl_['end_a'] = enc_form
     repl_['end_x'] = enc_form
-    df_tube = pd.read_csv(TUBE_FILE)
+    df_tube = pd.read_csv(os.path.join(DATA_DIR, 'tube.csv'))
     df_tube.drop(['material_id', 'other'], axis=1, inplace=True)
     df_tube.replace(repl_, inplace=True)
 
     # merge with bill_of_materials and specs
-    df_bill = pd.read_csv(pre_bill_of_materials)
-    df_specs = pd.read_csv(pre_specs)
-    df_out = pd.merge(df_tube, df_bill, on='tube_assembly_id')
-    df_out = pd.merge(df_out, df_specs, on='tube_assembly_id')
+    df_out = pd.merge(df_tube, pre_bill_of_materials, on='tube_assembly_id')
+    df_out = pd.merge(df_out, pre_specs, on='tube_assembly_id')
 
-    # write to output file
-    df_out.to_csv(out_file, index=False)
     print('finished preprocessing tubes')
+    return df_out
 
 
-def merge_train_test_tube(in_train_test_file, in_tube_file, out_file):
+def merge_train_test_tube(pre_train_test, pre_tube, out_file):
     """
     Merge two data sets from preprocess_train/test and preprocess_tube together.
 
     Arguments:
-        in_train_test_file: str - path to input train/test file
-        in_tube_file: str - path to input tube file
+        pre_train_test: pd.DataFrame() - preprocessed train/test
+        pre_tube: pd.DataFrame() - preprocessed tube
         out_file: str - path to output file
     CSV header:
         tube_assembly_id,[tube_contents],[train/test_contents]
     """
-    # load data
-    df_in = pd.read_csv(in_train_test_file)
-    df_tube = pd.read_csv(in_tube_file)
-
     # merge
-    df_out = pd.merge(df_in, df_tube, on='tube_assembly_id')
+    df_out = pd.merge(pre_train_test, pre_tube, on='tube_assembly_id')
 
     # write output
     df_out.to_csv(out_file, index=False)
@@ -256,20 +232,15 @@ def preprocess():
     Wrapper for preprocessing functions.
     """
     print('preprocessing...')
-    pre_train_path = os.path.join(MODEL_DIR, 'pre_train.csv')
-    pre_test_path = os.path.join(MODEL_DIR, 'pre_test.csv')
-    pre_bill_path = os.path.join(MODEL_DIR, 'pre_bill_of_materials.csv')
-    pre_spec_path = os.path.join(MODEL_DIR, 'pre_specs.csv')
-    pre_tube_path = os.path.join(MODEL_DIR, 'pre_tube.csv')
     merged_train_path = os.path.join(MODEL_DIR, 'merged_train.csv')
     merged_test_path = os.path.join(MODEL_DIR, 'merged_test.csv')
 
-    preprocess_train_test(True, pre_train_path)
-    preprocess_train_test(False, pre_test_path)
-    preprocess_tube(preprocess_bill_of_materials(pre_bill_path),
-                    preprocess_specs(pre_spec_path), pre_tube_path)
-    merge_train_test_tube(pre_train_path, pre_tube_path, merged_train_path)
-    merge_train_test_tube(pre_test_path, pre_tube_path, merged_test_path)
+    pre_train = preprocess_train_test(True)
+    pre_test = preprocess_train_test(False)
+    pre_tube = preprocess_tube(
+        preprocess_bill_of_materials(), preprocess_specs())
+    merge_train_test_tube(pre_train, pre_tube, merged_train_path)
+    merge_train_test_tube(pre_test, pre_tube, merged_test_path)
 
     return merged_train_path, merged_test_path
 
