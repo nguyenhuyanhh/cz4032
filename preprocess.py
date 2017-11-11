@@ -6,8 +6,6 @@ import os
 
 import pandas as pd
 
-import constants
-
 # init paths
 CUR_DIR = os.path.dirname(os.path.realpath(__file__))
 DATA_DIR = os.path.join(CUR_DIR, 'competition_data')
@@ -15,12 +13,15 @@ MODEL_DIR = os.path.join(CUR_DIR, 'model_xgboost')
 if not os.path.exists(MODEL_DIR):
     os.makedirs(MODEL_DIR)
 
-# added suppliers S-0058, S-0064; Score: 0.215039
-# SUPP_ENCODE = ['S-0013', 'S-0026', 'S-0041', 'S-0054',
-#                'S-0058', 'S-0064', 'S-0066',
-#                'S-0072', 'S-others']
 
-SUPP_ENCODE = constants.SUPP_PREPRO
+def _get_supp_encode(count=15):
+    from collections import Counter
+
+    df_ = pd.read_csv(os.path.join(
+        DATA_DIR, 'train_set.csv'), usecols=['supplier'])
+    counter = Counter(df_['supplier'])
+    return [x[0] for x in counter.most_common(count)] + ['S-others']
+
 
 def preprocess_train_test(train_test):
     """
@@ -36,9 +37,9 @@ def preprocess_train_test(train_test):
         annual_usage,min_order_quantity,bracket_pricing,quantity,[cost]
     """
     # constants
-    supp_encode = ['S-0066', 'S-0041', 'S-0072', 'S-0054',
-                   'S-0026', 'S-0013', 'S-0058', 'S-0064', 'S-others']
+    supp_encode = _get_supp_encode()
     date_encode = ['year', 'month', 'date']
+
     # read source file
     if train_test:
         df_in = pd.read_csv(os.path.join(DATA_DIR, 'train_set.csv'))
