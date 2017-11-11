@@ -37,10 +37,18 @@ def visualize_suppliers():
     # sort and plot
     values = sorted(new_supp_dist.values(), reverse=True)
     keys = sorted(new_supp_dist, key=new_supp_dist.get, reverse=True)
-    plt.figure()
+    _, axe = plt.subplots()
     plt.bar(range(len(values)), values, align='center')
-    plt.xticks(range(len(values)), keys, rotation=45)
+
+    # labels
+    plt.xticks(range(len(values)), keys, rotation=20, fontsize='x-small')
+    plt.xlabel('supplier_id')
+    plt.ylabel('count')
     plt.suptitle('Distribution of Suppliers')
+    bars = axe.patches
+    for bar_, label in zip(bars, values):
+        axe.text(bar_.get_x() + bar_.get_width() / 2, bar_.get_height() +
+                 5, label, ha='center', va='bottom', fontsize='x-small')
     plt.savefig(os.path.join(VIZ_DIR, 'visualize_suppliers.png'))
 
 
@@ -57,10 +65,18 @@ def visualize_specs():
     # sort and plot
     keys = sorted(spec_dist)
     values = [spec_dist[key] for key in keys]
-    plt.figure()
+    _, axe = plt.subplots()
     plt.bar(range(len(values)), values, align='center')
+
+    # labels
     plt.xticks(range(len(values)), keys)
+    plt.xlabel('number of specs')
+    plt.ylabel('count')
     plt.suptitle('Distribution of Specs')
+    bars = axe.patches
+    for bar_, label in zip(bars, values):
+        axe.text(bar_.get_x() + bar_.get_width() / 2, bar_.get_height() +
+                 5, label, ha='center', va='bottom', fontsize='x-small')
     plt.savefig(os.path.join(VIZ_DIR, 'visualize_specs.png'))
 
 
