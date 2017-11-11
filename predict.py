@@ -11,11 +11,13 @@ import pandas as pd
 
 import xgboost as xgb
 
+import constants
+
 # init paths
 CUR_DIR = os.path.dirname(os.path.realpath(__file__))
 MODEL_DIR = os.path.join(CUR_DIR, 'model_xgboost')
 # outputs
-OUT_FILE = os.path.join(CUR_DIR, 'out.csv')
+OUT_FILE = os.path.join(CUR_DIR, constants.OUT_NAME)
 
 
 def predict(test_set):

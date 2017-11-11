@@ -6,6 +6,8 @@ import os
 
 import pandas as pd
 
+import constants
+
 # init paths
 CUR_DIR = os.path.dirname(os.path.realpath(__file__))
 DATA_DIR = os.path.join(CUR_DIR, 'competition_data')
@@ -13,6 +15,12 @@ MODEL_DIR = os.path.join(CUR_DIR, 'model_xgboost')
 if not os.path.exists(MODEL_DIR):
     os.makedirs(MODEL_DIR)
 
+# added suppliers S-0058, S-0064; Score: 0.215039
+# SUPP_ENCODE = ['S-0013', 'S-0026', 'S-0041', 'S-0054',
+#                'S-0058', 'S-0064', 'S-0066',
+#                'S-0072', 'S-others']
+
+SUPP_ENCODE = constants.SUPP_PREPRO
 
 def preprocess_train_test(train_test):
     """

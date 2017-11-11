@@ -10,3 +10,5 @@ model_xgboost/
 
 .idea/
 .DS_Store
+
+*.csv
