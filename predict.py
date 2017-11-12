@@ -11,13 +11,11 @@ import pandas as pd
 
 import xgboost as xgb
 
-import constants
-
 # init paths
 CUR_DIR = os.path.dirname(os.path.realpath(__file__))
 MODEL_DIR = os.path.join(CUR_DIR, 'model_xgboost')
 # outputs
-OUT_FILE = os.path.join(CUR_DIR, constants.OUT_NAME)
+OUT_FILE = os.path.join(CUR_DIR, 'out.csv')
 
 
 def predict(test_set):
@@ -31,8 +29,6 @@ def predict(test_set):
 
     # get test matrix
     df_in = pd.read_csv(test_set)
-    # log transforms for total weight
-    df_in['total_weight'] = np.log1p(df_in['total_weight'])
     test_data = df_in.drop(['tube_assembly_id'], axis=1)
     xgtest = xgb.DMatrix(test_data.values)
 
