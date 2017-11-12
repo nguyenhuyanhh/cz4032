@@ -148,7 +148,9 @@ def train_rf(train_set):
     train_data = df_in.drop(['tube_assembly_id', 'cost'], axis=1)
 
     # train
-    reg = RandomForestRegressor(n_jobs=-1)
-    reg.fit(train_data, target_data)
+    print('training...')
+    reg = RandomForestRegressor(n_jobs=-1, n_estimators=5000, verbose=1)
+    reg.fit(train_data.fillna(0).as_matrix(),
+            target_data.fillna(0).as_matrix())
 
     return reg

@@ -58,7 +58,7 @@ def predict_rf(reg, test_set):
     test_data = df_in.drop(['tube_assembly_id'], axis=1)
 
     # predict
-    ypred = reg.predict(test_data)
+    ypred = reg.predict(test_data.fillna(0).as_matrix())
     ypred = np.expm1(ypred)
 
     # output
