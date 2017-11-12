@@ -30,8 +30,7 @@ def train_xgb(train_set, config_file=os.path.join(CUR_DIR, 'config.json'),
 
     # get training matrix
     df_in = pd.read_csv(train_set)
-    # log transforms for total weight and cost
-    df_in['total_weight'] = np.log1p(df_in['total_weight'])
+    # log transforms for cost
     df_in['cost'] = np.log1p(df_in['cost'])
     target_data = df_in['cost']
     train_data = df_in.drop(['tube_assembly_id', 'cost'], axis=1)

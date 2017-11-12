@@ -25,11 +25,11 @@ def visualize_suppliers():
     supp_dist = Counter(df_in['supplier'])
 
     # filter significant suppliers
-    # take arbitrary value 100 as threshold
+    # take arbitrary value 25 as threshold
     new_supp_dist = {}
     new_supp_dist['Others'] = 0
     for key, value in supp_dist.items():
-        if value > 100:
+        if value > 25:
             new_supp_dist[key] = value
         else:
             new_supp_dist['Others'] += value
@@ -80,10 +80,39 @@ def visualize_specs():
     plt.savefig(os.path.join(VIZ_DIR, 'visualize_specs.png'))
 
 
+def visualize_bill():
+    """Visualize the distribution of components in bill of materials"""
+    # read bill of materials
+    df_in = pd.read_csv(os.path.join(DATA_DIR, 'bill_of_materials.csv'))
+
+    # process comp counts
+    df_in['count'] = df_in[['component_id_{}'.format(
+        i + 1) for i in range(8)]].count(axis=1)
+    comp_dist = Counter(df_in['count'])
+
+    # sort and plot
+    keys = sorted(comp_dist)
+    values = [comp_dist[key] for key in keys]
+    _, axe = plt.subplots()
+    plt.bar(range(len(values)), values, align='center')
+
+    # labels
+    plt.xticks(range(len(values)), keys)
+    plt.xlabel('number of components')
+    plt.ylabel('count')
+    plt.suptitle('Distribution of Components')
+    bars = axe.patches
+    for bar_, label in zip(bars, values):
+        axe.text(bar_.get_x() + bar_.get_width() / 2, bar_.get_height() +
+                 5, label, ha='center', va='bottom', fontsize='x-small')
+    plt.savefig(os.path.join(VIZ_DIR, 'visualize_bill.png'))
+
+
 def visualize():
     """Wrapper for all visualizations."""
     visualize_suppliers()
     visualize_specs()
+    visualize_bill()
     plt.show()
 
 

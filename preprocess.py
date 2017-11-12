@@ -5,6 +5,7 @@ Preprocess data for training and testing purposes
 import os
 
 import pandas as pd
+pd.options.mode.chained_assignment = None
 
 # init paths
 CUR_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -20,7 +21,7 @@ def _get_supp_encode(count=15):
     df_ = pd.read_csv(os.path.join(
         DATA_DIR, 'train_set.csv'), usecols=['supplier'])
     counter = Counter(df_['supplier'])
-    return [x[0] for x in counter.most_common(count)] + ['S-others']
+    return [x[0] for x in counter.most_common(count)]
 
 
 def preprocess_train_test(train_test):
@@ -36,10 +37,6 @@ def preprocess_train_test(train_test):
         tube_assembly_id,[supplier_encoding],[quote_date_encoding],
         annual_usage,min_order_quantity,bracket_pricing,quantity,[cost]
     """
-    # constants
-    supp_encode = _get_supp_encode()
-    date_encode = ['year', 'month', 'date']
-
     # read source file
     if train_test:
         df_in = pd.read_csv(os.path.join(DATA_DIR, 'train_set.csv'))
@@ -53,25 +50,21 @@ def preprocess_train_test(train_test):
         message = 'finished preprocessing test'
 
     # encoding for supplier
+    supp_encode = _get_supp_encode()
     df_supp = df_in[['tube_assembly_id', 'supplier']]
-    df_supp = df_supp.reindex(
-        columns=['tube_assembly_id', 'supplier'] + supp_encode, fill_value=0)
-    for index, row in df_supp.iterrows():
-        if row['supplier'] in supp_encode:
-            df_supp.at[index, row['supplier']] = 1
-        else:
-            df_supp.at[index, supp_encode[-1]] = 1
-    df_supp.drop('supplier', axis=1, inplace=True)
+    for supp in supp_encode:
+        df_supp[supp] = (df_supp['supplier'] == supp).astype(int)
+    df_supp['S-others'] = 1
+    df_supp['S-others'] = df_supp['S-others'] - \
+        df_supp[supp_encode].sum(axis=1)
+    df_supp.drop(['supplier'], axis=1, inplace=True)
 
     # encoding for date
     df_date = df_in[['quote_date']]
-    df_date = df_date.reindex(
-        columns=['quote_date'] + date_encode, fill_value=0)
-    for index, row in df_date.iterrows():
-        date = row['quote_date'].split('-')
-        df_date.at[index, 'year'] = date[0]
-        df_date.at[index, 'month'] = date[1]
-        df_date.at[index, 'date'] = date[2]
+    tmp = df_date['quote_date'].str.split('-')
+    df_date['year'] = tmp.str.get(0).astype(int)
+    df_date['month'] = tmp.str.get(1).astype(int)
+    df_date['date'] = tmp.str.get(2).astype(int)
     df_date.drop(['quote_date'], axis=1, inplace=True)
 
     # encoding for bracket_pricing'
