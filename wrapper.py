@@ -6,9 +6,9 @@ import argparse
 import os
 from time import time
 
-from predict import predict, predict_rf
+from predict import predict_xgb, predict_rf
 from preprocess import preprocess
-from train import train, train_rf
+from train import train_xgb, train_rf
 
 CUR_DIR = os.path.dirname(os.path.realpath(__file__))
 MODEL_DIR = os.path.join(CUR_DIR, 'model_xgboost')
@@ -32,9 +32,9 @@ def main(args):
     # xgboost
     else:
         if args.train:
-            train(train_set, output_model=(not args.cv), bayes_opt=args.bo)
+            train_xgb(train_set, output_model=(not args.cv), bayes_opt=args.bo)
         if args.predict:
-            predict(test_set)
+            predict_xgb(test_set)
 
     end_time = time()
     print('exec time is {} seconds'.format(end_time - start_time))

@@ -8,17 +8,14 @@ import os
 import numpy as np
 import pandas as pd
 
-import xgboost as xgb
-
 # init paths
 CUR_DIR = os.path.dirname(os.path.realpath(__file__))
 MODEL_DIR = os.path.join(CUR_DIR, 'model_xgboost')
 
 
-def train(train_set, config_file=os.path.join(CUR_DIR, 'config.json'),
-          output_model=True, bayes_opt=False):
-    """
-    Build the model for prediction.
+def train_xgb(train_set, config_file=os.path.join(CUR_DIR, 'config.json'),
+              output_model=True, bayes_opt=False):
+    """Build the xgboost model for prediction.
 
     Arguments:
         train_set: str - path to training set
@@ -29,6 +26,8 @@ def train(train_set, config_file=os.path.join(CUR_DIR, 'config.json'),
         bayes_opt: boolean - whether to find best parameters using BO
                 default is False.
     """
+    import xgboost as xgb
+
     # get training matrix
     df_in = pd.read_csv(train_set)
     # log transforms for total weight and cost
@@ -137,7 +136,11 @@ def train(train_set, config_file=os.path.join(CUR_DIR, 'config.json'),
 
 
 def train_rf(train_set):
-    """Training using random forest."""
+    """Training using random forest.
+
+    Arguments:
+        train_set: str - path to training set
+    """
     from sklearn.ensemble import RandomForestRegressor
 
     # get training matrix

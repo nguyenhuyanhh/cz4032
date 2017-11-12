@@ -9,8 +9,6 @@ import os
 import numpy as np
 import pandas as pd
 
-import xgboost as xgb
-
 # init paths
 CUR_DIR = os.path.dirname(os.path.realpath(__file__))
 MODEL_DIR = os.path.join(CUR_DIR, 'model_xgboost')
@@ -18,13 +16,14 @@ MODEL_DIR = os.path.join(CUR_DIR, 'model_xgboost')
 OUT_FILE = os.path.join(CUR_DIR, 'out.csv')
 
 
-def predict(test_set):
-    """
-    Predict based on the model.
+def predict_xgb(test_set):
+    """Predict based on xgboost model.
 
     Arguments:
         test_set: str - path to test set
     """
+    import xgboost as xgb
+
     print('predicting...')
 
     # get test matrix
@@ -48,7 +47,11 @@ def predict(test_set):
 
 
 def predict_rf(reg, test_set):
-    """Predict based on random forest model"""
+    """Predict based on random forest model.
+
+    Arguments:
+        test_set: str - path to test set
+    """
     print('predicting...')
 
     # get test matrix
