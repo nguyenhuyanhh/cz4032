@@ -62,9 +62,9 @@ def preprocess_train_test(train_test):
     # encoding for date
     df_date = df_in[['quote_date']]
     tmp = df_date['quote_date'].str.split('-')
-    df_date['year'] = tmp.str.get(0)
-    df_date['month'] = tmp.str.get(1)
-    df_date['date'] = tmp.str.get(2)
+    df_date['year'] = tmp.str.get(0).astype(int)
+    df_date['month'] = tmp.str.get(1).astype(int)
+    df_date['date'] = tmp.str.get(2).astype(int)
     df_date.drop(['quote_date'], axis=1, inplace=True)
 
     # encoding for bracket_pricing'
