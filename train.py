@@ -134,3 +134,21 @@ def train(train_set, config_file=os.path.join(CUR_DIR, 'config.json'),
             print('performing cross-validation...')
             eval_ = -xgb_evaluate()
             print('final test rmse: {}'.format(eval_))
+
+
+def train_rf(train_set):
+    """Training using random forest."""
+    from sklearn.ensemble import RandomForestRegressor
+
+    # get training matrix
+    df_in = pd.read_csv(train_set)
+    # log transforms cost
+    df_in['cost'] = np.log1p(df_in['cost'])
+    target_data = df_in['cost']
+    train_data = df_in.drop(['tube_assembly_id', 'cost'], axis=1)
+
+    # train
+    reg = RandomForestRegressor(n_jobs=-1)
+    reg.fit(train_data, target_data)
+
+    return reg
