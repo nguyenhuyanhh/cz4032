@@ -11,9 +11,7 @@ import pandas as pd
 
 # init paths
 CUR_DIR = os.path.dirname(os.path.realpath(__file__))
-MODEL_DIR = os.path.join(CUR_DIR, 'model_xgboost')
-# outputs
-OUT_FILE = os.path.join(CUR_DIR, 'out.csv')
+MODEL_DIR = os.path.join(CUR_DIR, 'model')
 
 
 def predict_xgb(test_set):
@@ -33,7 +31,7 @@ def predict_xgb(test_set):
 
     # predict
     model = xgb.Booster()  # init model
-    model.load_model(os.path.join(MODEL_DIR, '0001.model'))  # load model
+    model.load_model(os.path.join(MODEL_DIR, 'model_xgb'))  # load model
     ypred = model.predict(xgtest)
     ypred = np.expm1(ypred)
 
@@ -41,7 +39,7 @@ def predict_xgb(test_set):
     df_out = pd.DataFrame()
     df_out['id'] = np.arange(1, len(ypred) + 1)
     df_out['cost'] = ypred
-    df_out.to_csv(OUT_FILE, index=False)
+    df_out.to_csv(os.path.join(CUR_DIR, 'out_xgb.csv'), index=False)
 
 
 def predict_rf(reg, test_set):
@@ -66,4 +64,4 @@ def predict_rf(reg, test_set):
     df_out = pd.DataFrame()
     df_out['id'] = np.arange(1, len(ypred) + 1)
     df_out['cost'] = ypred
-    df_out.to_csv(OUT_FILE, index=False)
+    df_out.to_csv(os.path.join(CUR_DIR, 'out_rf.csv'), index=False)

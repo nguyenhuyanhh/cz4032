@@ -10,7 +10,7 @@ import pandas as pd
 
 # init paths
 CUR_DIR = os.path.dirname(os.path.realpath(__file__))
-MODEL_DIR = os.path.join(CUR_DIR, 'model_xgboost')
+MODEL_DIR = os.path.join(CUR_DIR, 'model')
 
 
 def train_xgb(train_set, config_file=os.path.join(CUR_DIR, 'config.json'),
@@ -118,7 +118,7 @@ def train_xgb(train_set, config_file=os.path.join(CUR_DIR, 'config.json'),
         if output_model:
             print('training...')
             model = xgb.train(params, xgtrain, num_round)
-            model.save_model(os.path.join(MODEL_DIR, '0001.model'))
+            model.save_model(os.path.join(MODEL_DIR, 'model_xgb'))
         else:
             print('performing cross-validation...')
             eval_ = -xgb_evaluate()
@@ -127,7 +127,7 @@ def train_xgb(train_set, config_file=os.path.join(CUR_DIR, 'config.json'),
         if output_model:
             print('training...')
             model = xgb.train(params, xgtrain, num_round)
-            model.save_model(os.path.join(MODEL_DIR, '0001.model'))
+            model.save_model(os.path.join(MODEL_DIR, 'model_xgb'))
         else:
             print('performing cross-validation...')
             eval_ = -xgb_evaluate()

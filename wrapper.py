@@ -11,7 +11,7 @@ from preprocess import preprocess
 from train import train_xgb, train_rf
 
 CUR_DIR = os.path.dirname(os.path.realpath(__file__))
-MODEL_DIR = os.path.join(CUR_DIR, 'model_xgboost')
+MODEL_DIR = os.path.join(CUR_DIR, 'model')
 
 
 def main(args):
