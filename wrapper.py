@@ -40,7 +40,7 @@ def main(args):
     if args.ensemble:
         try:
             ensemble([os.path.join(CUR_DIR, 'out_xgb.csv'),
-                      os.path.join(CUR_DIR, 'out_rf.csv')])
+                      os.path.join(CUR_DIR, 'out_rf.csv')], [0.95, 0.05])
         except BaseException:
             pass
 
