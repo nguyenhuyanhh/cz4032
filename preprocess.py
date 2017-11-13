@@ -10,7 +10,7 @@ pd.options.mode.chained_assignment = None
 # init paths
 CUR_DIR = os.path.dirname(os.path.realpath(__file__))
 DATA_DIR = os.path.join(CUR_DIR, 'competition_data')
-MODEL_DIR = os.path.join(CUR_DIR, 'model_xgboost')
+MODEL_DIR = os.path.join(CUR_DIR, 'model')
 if not os.path.exists(MODEL_DIR):
     os.makedirs(MODEL_DIR)
 

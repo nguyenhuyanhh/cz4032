@@ -5,8 +5,8 @@ __pycache__/
 # VSCode
 .vscode
 
-# Models for XGBoost
-model_xgboost/
+# Models
+model/
 
 .idea/
 .DS_Store
