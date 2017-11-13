@@ -6,7 +6,7 @@ import argparse
 import os
 from time import time
 
-from predict import predict_xgb, predict_rf
+from predict import predict_xgb, predict_rf, ensemble
 from preprocess import preprocess
 from train import train_xgb, train_rf
 
@@ -36,6 +36,14 @@ def main(args):
         if args.predict:
             predict_xgb(test_set)
 
+    # ensemble
+    if args.ensemble:
+        try:
+            ensemble([os.path.join(CUR_DIR, 'out_xgb.csv'),
+                      os.path.join(CUR_DIR, 'out_rf.csv')])
+        except BaseException:
+            pass
+
     end_time = time()
     print('exec time is {} seconds'.format(end_time - start_time))
 
@@ -54,5 +62,7 @@ if __name__ == '__main__':
         '-b', '--bo', action='store_true', help='hyper-parameter tuning using BO')
     ARG_PARSER.add_argument(
         '-r', '--rf', action='store_true', help='use random-forest')
+    ARG_PARSER.add_argument(
+        '-e', '--ensemble', action='store_true', help='ensemble xgboost and random-forest')
     ARGS = ARG_PARSER.parse_args()
     main(ARGS)
