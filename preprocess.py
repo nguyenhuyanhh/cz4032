@@ -149,23 +149,16 @@ def preprocess_specs():
     """
     # read specs file
     df_in = pd.read_csv(os.path.join(DATA_DIR, 'specs.csv'))
+    spec_cols = ['spec{}'.format(i + 1) for i in range(10)]
 
-    # create output dataframe
-    df_out = df_in.filter(items=['tube_assembly_id']).copy()
-    col_add = ['with_spec', 'no_spec']
-    df_out = df_out.reindex(
-        columns=df_out.columns.tolist() + col_add, fill_value=0)
-
-    for index, row in df_in.iterrows():
-        no_spec = row[1:].count()
-        df_out.at[index, 'no_spec'] = no_spec
-        if no_spec:
-            df_out.at[index, 'with_spec'] = 1
-        else:
-            df_out.at[index, 'with_spec'] = 0
+    # with_spec and no_spec
+    df_in['with_spec'] = 0
+    df_in['no_spec'] = df_in[spec_cols].count(axis=1)
+    df_in['with_spec'] = (df_in['no_spec'] > 0).astype(int)
+    df_in.drop(spec_cols, axis=1, inplace=True)
 
     print('finished preprocessing specs')
-    return df_out
+    return df_in
 
 
 def preprocess_tube(pre_bill_of_materials, pre_specs):
