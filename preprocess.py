@@ -80,64 +80,74 @@ def preprocess_train_test(train_test):
 
 
 def preprocess_components():
-    """
-    Preprocess comp_*.csv into convenient lookup tables.
+    """Preprocess components.
 
-    Forward lookup: component type -> component_id -> weight
-    Reverse lookup: component_id -> component type
+    CSV header:
+        component_id, component_type, weight
     """
-    # init the component lists and lookup
+    # get component_type and weight
     files = [i for i in os.listdir(DATA_DIR) if i[:5] == 'comp_']  # comp_*
-    forward_lookup = {}
-    reverse_lookup = {}
+    dfs = []
     for file_ in files:
-        key = file_[5:-4]  # component type: adaptor, boss, etc.
-        forward_lookup[key] = {}
-        data = pd.read_csv(os.path.join(DATA_DIR, file_))
-        for _, row in data.iterrows():
-            reverse_lookup[row['component_id']] = key
-            if row['weight'] != 'NA':
-                forward_lookup[key][row['component_id']] = row['weight']
-            else:
-                forward_lookup[key][row['component_id']] = 0
-    # handle component id 9999
-    forward_lookup['other']['9999'] = 0
-    reverse_lookup['9999'] = 'other'
+        df_ = pd.read_csv(os.path.join(DATA_DIR, file_),
+                          usecols=['component_id', 'weight'])
+        df_['component_type'] = file_[5:-4]
+        dfs += [df_]
+
+    # produce output
+    df_out = pd.concat(dfs, ignore_index=True)
+    # handle component 9999 and 0 for later
+    app = [{'component_id': '9999', 'weight': 0, 'component_type': 'other'}, {
+        'component_id': 0, 'weight': 0, 'component_type': '0'}]
+    df_out = df_out.append(app, ignore_index=True)
     print('finished preprocessing components')
-    return forward_lookup, reverse_lookup
+    return df_out
 
 
 def preprocess_bill_of_materials():
-    """
-    Preprocess bill_of_materials.csv.
+    """Preprocess bill of materials.
 
     CSV header:
-        tube_assembly_id,adaptor,boss,elbow,float,hfl,nut,other,sleeve,
-        straight,tee,threaded,total_weight
+        tube_assembly_id,[component_type_encoding],total_weight
     """
-    # read bill of materials
-    df_in = pd.read_csv(os.path.join(DATA_DIR, 'bill_of_materials.csv'))
+    from collections import Counter
 
-    # prepare df_out
-    fwd, rev = preprocess_components()
-    component_types = fwd.keys()
-    df_out = df_in.filter(items=['tube_assembly_id']).copy()
-    df_out = df_out.reindex(columns=df_out.columns.tolist(
-    ) + component_types + ['total_weight'], fill_value=0.0)
+    # read bill of materials, fill NaNs with 0s
+    df_in = pd.read_csv(os.path.join(
+        DATA_DIR, 'bill_of_materials.csv')).fillna(0)
 
-    # loop through tube_assembly_ids
-    for index, row in df_in.iterrows():
-        i = 1
-        while i <= 8 and not pd.isnull(row['component_id_{}'.format(i)]):
-            comp_type = rev[row['component_id_{}'.format(i)]]
-            comp_cnt = row['quantity_{}'.format(i)]
-            df_out.at[index, comp_type] += comp_cnt
-            df_out.at[index,
-                      'total_weight'] += fwd[comp_type][row['component_id_{}'.format(i)]] * comp_cnt
-            i += 1
+    # load components
+    df_comp = preprocess_components()
+    comps = Counter(df_comp['component_type']).keys()
 
+    # init component_type_encoding and weight
+    for comp in comps:
+        df_in[comp] = 0
+    df_in['total_weight'] = 0
+
+    # calculate
+    drops = []
+    for i in range(8):
+        # merge with components
+        cid = 'component_id_{}'.format(i + 1)
+        wei = 'weight_{}'.format(i + 1)
+        ctp = 'component_type_{}'.format(i + 1)
+        qty = 'quantity_{}'.format(i + 1)
+        df_comp[cid], df_comp[wei], df_comp[ctp] = df_comp['component_id'], \
+            df_comp['weight'], df_comp['component_type']
+        df_in = df_in.merge(df_comp[[cid, wei, ctp]],
+                            on=cid, sort=False)
+        # weight
+        df_in['total_weight'] += df_in[qty] * df_in[wei]
+        # component_type_encoding
+        for comp in comps:
+            df_in[comp] += ((df_in[ctp] == comp).astype(int)) * df_in[qty]
+        # drop columns later
+        drops += [cid, wei, ctp, qty]
+
+    df_in.drop(drops + ['0'], axis=1, inplace=True)
     print('finished preprocessing bill of materials')
-    return df_out
+    return df_in
 
 
 def preprocess_specs():
@@ -149,23 +159,16 @@ def preprocess_specs():
     """
     # read specs file
     df_in = pd.read_csv(os.path.join(DATA_DIR, 'specs.csv'))
+    spec_cols = ['spec{}'.format(i + 1) for i in range(10)]
 
-    # create output dataframe
-    df_out = df_in.filter(items=['tube_assembly_id']).copy()
-    col_add = ['with_spec', 'no_spec']
-    df_out = df_out.reindex(
-        columns=df_out.columns.tolist() + col_add, fill_value=0)
-
-    for index, row in df_in.iterrows():
-        no_spec = row[1:].count()
-        df_out.at[index, 'no_spec'] = no_spec
-        if no_spec:
-            df_out.at[index, 'with_spec'] = 1
-        else:
-            df_out.at[index, 'with_spec'] = 0
+    # with_spec and no_spec
+    df_in['with_spec'] = 0
+    df_in['no_spec'] = df_in[spec_cols].count(axis=1)
+    df_in['with_spec'] = (df_in['no_spec'] > 0).astype(int)
+    df_in.drop(spec_cols, axis=1, inplace=True)
 
     print('finished preprocessing specs')
-    return df_out
+    return df_in
 
 
 def preprocess_tube(pre_bill_of_materials, pre_specs):
