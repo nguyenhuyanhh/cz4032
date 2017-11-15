@@ -33,7 +33,7 @@ def train_xgb(train_set, config_file=os.path.join(CUR_DIR, 'config.json'),
     # log transforms for cost
     df_in['cost'] = np.log1p(df_in['cost'])
     target_data = df_in['cost']
-    train_data = df_in.drop(['tube_assembly_id', 'cost'], axis=1)
+    train_data = df_in.drop(['cost'], axis=1)
     xgtrain = xgb.DMatrix(train_data.values, target_data.values)
 
     # xgboost parameters
@@ -147,7 +147,7 @@ def train_rf(train_set):
     # log transforms cost
     df_in['cost'] = np.log1p(df_in['cost'])
     target_data = df_in['cost']
-    train_data = df_in.drop(['tube_assembly_id', 'cost'], axis=1)
+    train_data = df_in.drop(['cost'], axis=1)
 
     # train
     print('training...')

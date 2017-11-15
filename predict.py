@@ -27,7 +27,7 @@ def predict_xgb(test_set):
 
     # get test matrix
     df_in = pd.read_csv(test_set)
-    test_data = df_in.drop(['tube_assembly_id'], axis=1)
+    test_data = df_in
     xgtest = xgb.DMatrix(test_data.values)
 
     # predict
@@ -58,7 +58,7 @@ def predict_rf(reg, test_set):
     df_in = pd.read_csv(test_set)
     # log transforms for total weight
     df_in['total_weight'] = np.log1p(df_in['total_weight'])
-    test_data = df_in.drop(['tube_assembly_id'], axis=1)
+    test_data = df_in
 
     # predict
     ypred = reg.predict(test_data.fillna(0).as_matrix())

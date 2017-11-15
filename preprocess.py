@@ -3,8 +3,10 @@ Preprocess data for training and testing purposes
 """
 
 import os
+from collections import Counter
 
 import pandas as pd
+
 pd.options.mode.chained_assignment = None
 
 # init paths
@@ -16,11 +18,10 @@ if not os.path.exists(MODEL_DIR):
 
 
 def _get_supp_encode(count=15):
-    from collections import Counter
-
     df_ = pd.read_csv(os.path.join(
         DATA_DIR, 'train_set.csv'), usecols=['supplier'])
     counter = Counter(df_['supplier'])
+
     return [x[0] for x in counter.most_common(count)]
 
 
@@ -83,22 +84,42 @@ def preprocess_components():
     """Preprocess components.
 
     CSV header:
-        component_id, component_type, weight
+        component_id, component_type, unique_feature,
+        orientation, weight
     """
-    # get component_type and weight
+    # get features
     files = [i for i in os.listdir(DATA_DIR) if i[:5] == 'comp_']  # comp_*
     dfs = []
     for file_ in files:
-        df_ = pd.read_csv(os.path.join(DATA_DIR, file_),
-                          usecols=['component_id', 'weight'])
-        df_['component_type'] = file_[5:-4]
-        dfs += [df_]
+        df_ = pd.read_csv(os.path.join(DATA_DIR, file_))
+        df_tmp = pd.DataFrame()
+        df_tmp['component_id'] = df_['component_id']
+        df_tmp['component_type'] = file_[5:-4]
+        try:
+            df_tmp['unique_feature'] = df_['unique_feature']
+        except KeyError:  # no unique_feature
+            df_tmp['unique_feature'] = 'No'
+        try:
+            df_tmp['orientation'] = df_['orientation']
+        except KeyError:  # no orientation
+            df_tmp['orientation'] = 'No'
+        df_tmp['weight'] = df_['weight']
+        dfs += [df_tmp]
 
     # produce output
     df_out = pd.concat(dfs, ignore_index=True)
+    df_out.replace({'unique_feature': {'Yes': 1, 'No': 0},
+                    'orientation': {'Yes': 1, 'No': 0}}, inplace=True)
+
     # handle component 9999 and 0 for later
-    app = [{'component_id': '9999', 'weight': 0, 'component_type': 'other'}, {
-        'component_id': 0, 'weight': 0, 'component_type': '0'}]
+    app = [
+        {'component_id': '9999', 'weight': 0,
+         'component_type': 'other', 'unique_feature': 0,
+         'orientation': 0},
+        {'component_id': 0, 'weight': 0,
+         'component_type': 'type_0', 'unique_feature': 0,
+         'orientation': 0}
+    ]
     df_out = df_out.append(app, ignore_index=True)
     print('finished preprocessing components')
     return df_out
@@ -108,21 +129,23 @@ def preprocess_bill_of_materials():
     """Preprocess bill of materials.
 
     CSV header:
-        tube_assembly_id,[component_type_encoding],total_weight
+        tube_assembly_id,[component_type_encoding],
+        [unique_feature_encoding],[orientation_encoding]
+        total_weight
     """
-    from collections import Counter
-
     # read bill of materials, fill NaNs with 0s
     df_in = pd.read_csv(os.path.join(
         DATA_DIR, 'bill_of_materials.csv')).fillna(0)
 
     # load components
     df_comp = preprocess_components()
-    comps = Counter(df_comp['component_type']).keys()
+    comp_types = sorted(Counter(df_comp['component_type']).keys())
 
-    # init component_type_encoding and weight
-    for comp in comps:
-        df_in[comp] = 0
+    # init encodings and weight
+    for comp_type in comp_types:
+        df_in[comp_type] = 0
+    df_in['unique_feature'] = 0
+    df_in['orientation'] = 0
     df_in['total_weight'] = 0
 
     # calculate
@@ -132,20 +155,28 @@ def preprocess_bill_of_materials():
         cid = 'component_id_{}'.format(i + 1)
         wei = 'weight_{}'.format(i + 1)
         ctp = 'component_type_{}'.format(i + 1)
+        unq = 'unique_feature_{}'.format(i + 1)
+        ori = 'orientation_{}'.format(i + 1)
         qty = 'quantity_{}'.format(i + 1)
-        df_comp[cid], df_comp[wei], df_comp[ctp] = df_comp['component_id'], \
-            df_comp['weight'], df_comp['component_type']
-        df_in = df_in.merge(df_comp[[cid, wei, ctp]],
+        df_comp[cid], df_comp[wei], df_comp[ctp], df_comp[unq], df_comp[ori] = \
+            df_comp['component_id'], df_comp['weight'], df_comp['component_type'], \
+            df_comp['unique_feature'], df_comp['orientation']
+        df_in = df_in.merge(df_comp[[cid, wei, ctp, unq, ori]],
                             on=cid, sort=False)
         # weight
         df_in['total_weight'] += df_in[qty] * df_in[wei]
+        # unique_feature
+        df_in['unique_feature'] += df_in[qty] * df_in[unq]
+        # orientation
+        df_in['orientation'] += df_in[qty] * df_in[ori]
         # component_type_encoding
-        for comp in comps:
-            df_in[comp] += ((df_in[ctp] == comp).astype(int)) * df_in[qty]
+        for comp_type in comp_types:
+            df_in[comp_type] += ((df_in[ctp] ==
+                                  comp_type).astype(int)) * df_in[qty]
         # drop columns later
-        drops += [cid, wei, ctp, qty]
+        drops += [cid, wei, ctp, unq, ori, qty]
 
-    df_in.drop(drops + ['0'], axis=1, inplace=True)
+    df_in.drop(drops + ['type_0'], axis=1, inplace=True)
     print('finished preprocessing bill of materials')
     return df_in
 
@@ -179,10 +210,8 @@ def preprocess_tube(pre_bill_of_materials, pre_specs):
         pre_bill_of_materials: pd.DataFrame() - preprocessed bill of materials
         pre_specs: pd.DataFrame() - preprocessed specs
     CSV header:
-        tube_assembly_id,diameter,wall,length,num_bends,bend_radius,
-        end_a_1x,end_a_2x,end_x_1x,end_x_2x,end_a,end_x,adaptor,boss,
-        elbow,float,hfl,nut,other,sleeve,straight,tee,threaded,total_weight,
-        with_spec,no_spec
+        tube_assembly_id,[material_id_encoding],diameter,wall,length,num_bends,bend_radius,
+        [end_encoding],num_boss,num_bracket,other,[bill_of_materials_encoding],[specs_encoding]
     """
     # read tube_end_form file
     df_end_form = pd.read_csv(os.path.join(DATA_DIR, 'tube_end_form.csv'))
@@ -191,18 +220,24 @@ def preprocess_tube(pre_bill_of_materials, pre_specs):
     enc_form = {}
     for _, row in df_end_form.iterrows():
         if row['forming'] == 'Yes':
-            enc_form[row['end_form_id']] = 1
+            enc_form[row['end_form_id']] = 2
         else:
-            enc_form[row['end_form_id']] = 0
+            enc_form[row['end_form_id']] = 1
     enc_form['NONE'] = 0  # handle NONE
+
+    # encoding for material_id, only 20 are present
+    df_tube = pd.read_csv(os.path.join(
+        DATA_DIR, 'tube.csv')).fillna('SP-other')
+    mat_enc = [x[0] for x in Counter(df_tube['material_id']).most_common(25)]
+    for mat_id in mat_enc:
+        df_tube[mat_id] = (df_tube['material_id'] == mat_id).astype(int)
 
     # process tube in-memory
     repl_ = {k: {'Y': 1, 'N': 0}
              for k in ['end_a_1x', 'end_a_2x', 'end_x_1x', 'end_x_2x']}
     repl_['end_a'] = enc_form
     repl_['end_x'] = enc_form
-    df_tube = pd.read_csv(os.path.join(DATA_DIR, 'tube.csv'))
-    df_tube.drop(['material_id', 'other'], axis=1, inplace=True)
+    df_tube.drop(['material_id'], axis=1, inplace=True)
     df_tube.replace(repl_, inplace=True)
 
     # merge with bill_of_materials and specs
@@ -226,6 +261,8 @@ def merge_train_test_tube(pre_train_test, pre_tube, out_file):
     """
     # merge
     df_out = pd.merge(pre_train_test, pre_tube, on='tube_assembly_id')
+    df_out['tube_assembly_id'] = df_out['tube_assembly_id'].str.split(
+        '-').str.get(1).astype(int)
 
     # write output
     df_out.to_csv(out_file, index=False)
