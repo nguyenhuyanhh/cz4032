@@ -1,23 +1,50 @@
 # CZ4032 Data Analytics and Mining
 
-// Best result so far:
-Output file:        out6.csv
-Private score:      0.214137
-Public score:       0.219092
+We participated in [Caterpillar Tube Pricing](https://www.kaggle.com/c/caterpillar-tube-pricing), a Kaggle competition.
 
-// How to use the bash scripts:
-The scripts are for automating the model run.
-In order to run a bash script, type "bash [insert script name]" in command line.
+## Project Setup
 
-- "bash run.sh": run a normal prediction, considering 14 suppliers.
-- "bash run1.sh": run multiple prediction by removing 1 supplier at a time.
-- "bash run2.sh": run multiple prediction by removing 2 suppliers at a time.
+An Unix-based system (Mac/ Linux) is recommended. Tested on Ubuntu 16.04 LTS with Python 2.7.12.
 
-// Number of runs per script:
-- run.sh: 1 single run
-- run1.sh: 14 runs
-- run2.sh: 14 choose 2 = 91 runs
+1. Install [XGBoost](http://xgboost.readthedocs.io/en/latest/build.html)
+1. Install Python dependencies: `$ pip install --user numpy scipy scikit-learn pandas matplotlib bayesian-optimization` (`bayesian-optimization` is not required if you don't intend to tune hyer-parameters)
+1. Run the wrapper script: `$ python wrapper.py -tp`
 
-// Updates:
-#1 The script run1 is extended for 2 suppliers removal. The run2 is added.
-#2 Resolved problems with iterations. Previous output files fewer than 91.
+## Command-line interface
+
+```
+$ python wrapper.py -h
+usage: wrapper.py [-h] [-p] [-t] [-n] [-c] [-b] [-r] [-e]
+
+optional arguments:
+  -h, --help           show this help message and exit
+  -p, --predict        do predictions
+  -t, --train          train the model
+  -n, --no-preprocess  skip preprocessing
+  -c, --cv             do cross-validation (no model output)
+  -b, --bo             hyper-parameter tuning using BO
+  -r, --rf             use random-forest
+  -e, --ensemble       ensemble xgboost and random-forest
+```
+
+## Repository Structure
+
+```
+competition_data/
+    [competition data from Kaggle]
+model/
+    [model files]
+viz/
+    [visualizations]
+config.json             # hyper-parameters for xgboost
+visualize.py            # produce visualizations
+preprocess.py           # preprocessing script (can be run stand-alone)
+train.py                # training
+predict.py              # predictions
+wrapper.py              # wrapper
+```
+
+## Evaluation Score (Private Leaderboard)
+
+Random Forest: 0.254972
+XGBoost: 0.209043 (#19)
