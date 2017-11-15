@@ -219,9 +219,9 @@ def preprocess_tube(pre_bill_of_materials, pre_specs):
     enc_form = {}
     for _, row in df_end_form.iterrows():
         if row['forming'] == 'Yes':
-            enc_form[row['end_form_id']] = 1
+            enc_form[row['end_form_id']] = 2
         else:
-            enc_form[row['end_form_id']] = 0
+            enc_form[row['end_form_id']] = 1
     enc_form['NONE'] = 0  # handle NONE
 
     # process tube in-memory
