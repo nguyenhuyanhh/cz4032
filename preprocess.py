@@ -179,11 +179,10 @@ def preprocess_tube(pre_bill_of_materials, pre_specs):
         pre_bill_of_materials: pd.DataFrame() - preprocessed bill of materials
         pre_specs: pd.DataFrame() - preprocessed specs
     CSV header:
-        tube_assembly_id,diameter,wall,length,num_bends,bend_radius,
-        end_a_1x,end_a_2x,end_x_1x,end_x_2x,end_a,end_x,adaptor,boss,
-        elbow,float,hfl,nut,other,sleeve,straight,tee,threaded,total_weight,
-        with_spec,no_spec
+        tube_assembly_id,[tube_encoding],[material_id_encoding],
+        [bill_of_materials_content],[specs_content]
     """
+    from collections import Counter
     # read tube_end_form file
     df_end_form = pd.read_csv(os.path.join(DATA_DIR, 'tube_end_form.csv'))
 
@@ -196,13 +195,19 @@ def preprocess_tube(pre_bill_of_materials, pre_specs):
             enc_form[row['end_form_id']] = 0
     enc_form['NONE'] = 0  # handle NONE
 
+    # encoding for material_id, only 20 are present
+    df_tube = pd.read_csv(os.path.join(
+        DATA_DIR, 'tube.csv')).fillna('SP-other')
+    mat_enc = [x[0] for x in Counter(df_tube['material_id']).most_common(25)]
+    for mat_id in mat_enc:
+        df_tube[mat_id] = (df_tube['material_id'] == mat_id).astype(int)
+
     # process tube in-memory
     repl_ = {k: {'Y': 1, 'N': 0}
              for k in ['end_a_1x', 'end_a_2x', 'end_x_1x', 'end_x_2x']}
     repl_['end_a'] = enc_form
     repl_['end_x'] = enc_form
-    df_tube = pd.read_csv(os.path.join(DATA_DIR, 'tube.csv'))
-    df_tube.drop(['material_id', 'other'], axis=1, inplace=True)
+    df_tube.drop(['material_id'], axis=1, inplace=True)
     df_tube.replace(repl_, inplace=True)
 
     # merge with bill_of_materials and specs
