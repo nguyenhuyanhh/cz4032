@@ -81,7 +81,7 @@ def visualize_specs():
 
 
 def visualize_bill():
-    """Visualize the distribution of components in bill of materials"""
+    """Visualize the distribution of components in bill of materials."""
     # read bill of materials
     df_in = pd.read_csv(os.path.join(DATA_DIR, 'bill_of_materials.csv'))
 
@@ -108,11 +108,38 @@ def visualize_bill():
     plt.savefig(os.path.join(VIZ_DIR, 'visualize_bill.png'))
 
 
+def visualize_mat():
+    """Visualize the distribution of materials."""
+    # read tube file
+    df_in = pd.read_csv(os.path.join(DATA_DIR, 'tube.csv'))
+
+    # calculate distribution of mateirals
+    mat_dist = Counter(df_in['material_id'])
+
+    # sort and plot
+    values = sorted(mat_dist.values(), reverse=True)
+    keys = sorted(mat_dist, key=mat_dist.get, reverse=True)
+    _, axe = plt.subplots()
+    plt.bar(range(len(values)), values, align='center')
+
+    # labels
+    plt.xticks(range(len(values)), keys, rotation=30, fontsize='x-small')
+    plt.xlabel('material_id')
+    plt.ylabel('count')
+    plt.suptitle('Distribution of Materials')
+    bars = axe.patches
+    for bar_, label in zip(bars, values):
+        axe.text(bar_.get_x() + bar_.get_width() / 2, bar_.get_height() +
+                 5, label, ha='center', va='bottom', fontsize='x-small')
+    plt.savefig(os.path.join(VIZ_DIR, 'visualize_materials.png'))
+
+
 def visualize():
     """Wrapper for all visualizations."""
     visualize_suppliers()
     visualize_specs()
     visualize_bill()
+    visualize_mat()
     plt.show()
 
 
