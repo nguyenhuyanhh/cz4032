@@ -254,6 +254,8 @@ def merge_train_test_tube(pre_train_test, pre_tube, out_file):
     """
     # merge
     df_out = pd.merge(pre_train_test, pre_tube, on='tube_assembly_id')
+    df_out['tube_assembly_id'] = df_out['tube_assembly_id'].str.split(
+        '-').str.get(1).astype(int)
 
     # write output
     df_out.to_csv(out_file, index=False)
