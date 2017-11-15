@@ -139,7 +139,7 @@ def preprocess_bill_of_materials():
 
     # load components
     df_comp = preprocess_components()
-    comp_types = Counter(df_comp['component_type']).keys()
+    comp_types = sorted(Counter(df_comp['component_type']).keys())
 
     # init encodings and weight
     for comp_type in comp_types:
