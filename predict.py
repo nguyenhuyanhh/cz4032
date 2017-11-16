@@ -45,7 +45,7 @@ def predict_xgb(test_set):
     return out_file
 
 
-def predict_xgb_5fold(test_set):
+def predict_xgb_nfold(test_set, n_fold=10):
     """Predict based on 5-fold xgboost model."""
     import xgboost as xgb
 
@@ -57,7 +57,7 @@ def predict_xgb_5fold(test_set):
     test_data = df_in
     xgtest = xgb.DMatrix(test_data.values)
 
-    for fold in range(5):
+    for fold in range(n_fold):
         out_file = os.path.join(CUR_DIR, 'out_xgb_{}.csv'.format(fold + 1))
 
         # predict
@@ -74,16 +74,18 @@ def predict_xgb_5fold(test_set):
         df_out.to_csv(out_file, index=False)
         outs += [out_file]
 
-    # ensemble
+    # ensemble averaging
     ensemble(outs)
 
 
-def predict_rf(reg, test_set):
+def predict_rf(test_set):
     """Predict based on random forest model.
 
     Arguments:
         test_set: str - path to test set
     """
+    from sklearn.externals import joblib
+
     out_file = os.path.join(CUR_DIR, 'out_rf.csv')
     print('predicting...')
 
@@ -94,6 +96,7 @@ def predict_rf(reg, test_set):
     test_data = df_in
 
     # predict
+    reg = joblib.load(os.path.join(MODEL_DIR, 'model_rf'))
     ypred = reg.predict(test_data.fillna(0).as_matrix())
     ypred = np.expm1(ypred)
 
@@ -140,10 +143,6 @@ def ensemble(files, weights=None):
     if weights:
         for cost, weight in zip(costs, weights):
             ensemble_cost['cost'] += cost * weight
-    else:
+    else:  # average
         ensemble_cost['cost'] = np.mean(costs, axis=0)
     ensemble_cost.to_csv(ensemble_out, index=False)
-
-
-if __name__ == '__main__':
-    predict_xgb_5fold(os.path.join(MODEL_DIR, 'merged_test.csv'))

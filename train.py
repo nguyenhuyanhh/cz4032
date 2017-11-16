@@ -134,8 +134,8 @@ def train_xgb(train_set, config_file=os.path.join(CUR_DIR, 'config.json'),
             print('final test rmse: {}'.format(eval_))
 
 
-def train_xgb_5fold(train_set, config_file=os.path.join(CUR_DIR, 'config.json')):
-    """Train the xgboost model using 5-fold."""
+def train_xgb_nfold(train_set, n_fold=10, config_file=os.path.join(CUR_DIR, 'config.json')):
+    """Train the xgboost model using n-fold."""
     from sklearn.model_selection import KFold
     import xgboost as xgb
 
@@ -151,9 +151,9 @@ def train_xgb_5fold(train_set, config_file=os.path.join(CUR_DIR, 'config.json'))
     target_data = df_in['cost'].as_matrix()
     train_data = df_in.drop(['cost'], axis=1).as_matrix()
 
-    # get 5-fold and train each fold
+    # get n-fold and train each fold
     fold = 1
-    kf_ = KFold(n_splits=5, shuffle=True, random_state=42)
+    kf_ = KFold(n_splits=n_fold, shuffle=True, random_state=42)
     for train_index, _ in kf_.split(df_in):
         train, target = train_data[train_index], target_data[train_index]
         xgtrain = xgb.DMatrix(train, target)
@@ -170,6 +170,7 @@ def train_rf(train_set):
         train_set: str - path to training set
     """
     from sklearn.ensemble import RandomForestRegressor
+    from sklearn.externals import joblib
 
     # get training matrix
     df_in = pd.read_csv(train_set)
@@ -184,8 +185,7 @@ def train_rf(train_set):
     reg.fit(train_data.fillna(0).as_matrix(),
             target_data.fillna(0).as_matrix())
 
+    # save model
+    joblib.dump(reg, os.path.join(MODEL_DIR, 'model_rf'))
+
     return reg
-
-
-if __name__ == '__main__':
-    train_xgb_5fold(os.path.join(MODEL_DIR, 'merged_train.csv'))
