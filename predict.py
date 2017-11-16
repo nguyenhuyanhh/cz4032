@@ -72,7 +72,7 @@ def predict_xgb_nfold(test_set, n_fold=10):
         outs += [out_file]
 
     # ensemble averaging
-    ensemble(outs)
+    ensemble(outs, ensemble_out=os.path.join(CUR_DIR, 'out_xgb_nfold.csv'))
 
 
 def predict_rf(test_set):
@@ -105,10 +105,9 @@ def predict_rf(test_set):
     return out_file
 
 
-def ensemble(files, weights=None):
+def ensemble(files, weights=None, ensemble_out=os.path.join(CUR_DIR, 'out_ens.csv')):
     """Ensembling output files."""
     print('ensembling...')
-    ensemble_out = os.path.join(CUR_DIR, 'out_ens.csv')
 
     # validate inputs
     tmp = files
