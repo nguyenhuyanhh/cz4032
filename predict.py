@@ -72,7 +72,7 @@ def predict_xgb_5fold(test_set):
         df_out['id'] = np.arange(1, len(ypred) + 1)
         df_out['cost'] = ypred
         df_out.to_csv(out_file, index=False)
-        out += [out_file]
+        outs += [out_file]
 
     # ensemble
     ensemble(outs)
