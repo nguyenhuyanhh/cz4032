@@ -35,6 +35,7 @@ competition_data/
     [competition data from Kaggle]
 model/
     [model files]
+    [NOTE: please have at least 20GB of disk space, the RF model is HUGE]
 viz/
     [visualizations]
 config.json             # hyper-parameters for xgboost
