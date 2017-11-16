@@ -45,6 +45,39 @@ def predict_xgb(test_set):
     return out_file
 
 
+def predict_xgb_5fold(test_set):
+    """Predict based on 5-fold xgboost model."""
+    import xgboost as xgb
+
+    outs = []
+    print('predicting...')
+
+    # get test matrix
+    df_in = pd.read_csv(test_set)
+    test_data = df_in
+    xgtest = xgb.DMatrix(test_data.values)
+
+    for fold in range(5):
+        out_file = os.path.join(CUR_DIR, 'out_xgb_{}.csv'.format(fold + 1))
+
+        # predict
+        model = xgb.Booster()  # init model
+        model.load_model(os.path.join(
+            MODEL_DIR, 'model_xgb_{}'.format(fold + 1)))  # load model
+        ypred = model.predict(xgtest)
+        ypred = np.expm1(ypred)
+
+        # output
+        df_out = pd.DataFrame()
+        df_out['id'] = np.arange(1, len(ypred) + 1)
+        df_out['cost'] = ypred
+        df_out.to_csv(out_file, index=False)
+        out += [out_file]
+
+    # ensemble
+    ensemble(outs)
+
+
 def predict_rf(reg, test_set):
     """Predict based on random forest model.
 
@@ -110,3 +143,7 @@ def ensemble(files, weights=None):
     else:
         ensemble_cost['cost'] = np.mean(costs, axis=0)
     ensemble_cost.to_csv(ensemble_out, index=False)
+
+
+if __name__ == '__main__':
+    predict_xgb_5fold(os.path.join(MODEL_DIR, 'merged_test.csv'))
