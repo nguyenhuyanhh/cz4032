@@ -45,7 +45,12 @@ def predict_xgb(test_set):
 
 
 def predict_xgb_nfold(test_set, n_fold=10):
-    """Predict based on 5-fold xgboost model."""
+    """Predict based on n-fold xgboost model.
+
+    Arguments:
+        test_set: str - path to test set
+        n_fold: int - number of folds, default to 10
+    """
     import xgboost as xgb
 
     # get test matrix
@@ -106,7 +111,15 @@ def predict_rf(test_set):
 
 
 def ensemble(files, weights=None, ensemble_out=os.path.join(CUR_DIR, 'out_ens.csv')):
-    """Ensembling output files."""
+    """Ensembling output files.
+
+    Arguments:
+        files: list(str) - list of paths to output files for ensembling
+        weights: list(float) - list of corresponding weights for each output file
+                default is None, equal weight
+        ensemble_out: str - path to final ensembled output
+                default to out_ens.csv in current directory
+    """
     print('ensembling...')
 
     # validate inputs

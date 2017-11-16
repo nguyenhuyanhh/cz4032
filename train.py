@@ -133,7 +133,14 @@ def train_xgb(train_set, config_file=os.path.join(CUR_DIR, 'config.json'),
 
 
 def train_xgb_nfold(train_set, n_fold=10, config_file=os.path.join(CUR_DIR, 'config.json')):
-    """Train the xgboost model using n-fold."""
+    """Train the xgboost model using n-fold.
+
+    Arguments:
+        train_set: str - path to training set
+        n_fold: int - number of folds, default to 10
+        config_file: str - path to config file (hyper-parameters)
+                default is 'config.json' in current directory
+    """
     from sklearn.model_selection import KFold
     import xgboost as xgb
 
