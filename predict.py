@@ -23,7 +23,6 @@ def predict_xgb(test_set):
     import xgboost as xgb
 
     out_file = os.path.join(CUR_DIR, 'out_xgb.csv')
-    print('predicting...')
 
     # get test matrix
     df_in = pd.read_csv(test_set)
@@ -49,14 +48,12 @@ def predict_xgb_nfold(test_set, n_fold=10):
     """Predict based on 5-fold xgboost model."""
     import xgboost as xgb
 
-    outs = []
-    print('predicting...')
-
     # get test matrix
     df_in = pd.read_csv(test_set)
     test_data = df_in
     xgtest = xgb.DMatrix(test_data.values)
 
+    outs = []
     for fold in range(n_fold):
         out_file = os.path.join(CUR_DIR, 'out_xgb_{}.csv'.format(fold + 1))
 
@@ -87,7 +84,6 @@ def predict_rf(test_set):
     from sklearn.externals import joblib
 
     out_file = os.path.join(CUR_DIR, 'out_rf.csv')
-    print('predicting...')
 
     # get test matrix
     df_in = pd.read_csv(test_set)

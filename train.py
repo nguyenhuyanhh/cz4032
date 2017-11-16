@@ -116,7 +116,6 @@ def train_xgb(train_set, config_file=os.path.join(CUR_DIR, 'config.json'),
         del params['silent']  # show output again
 
         if output_model:
-            print('training...')
             model = xgb.train(params, xgtrain, num_round)
             model.save_model(os.path.join(MODEL_DIR, 'model_xgb'))
         else:
@@ -125,7 +124,6 @@ def train_xgb(train_set, config_file=os.path.join(CUR_DIR, 'config.json'),
             print('final test rmse: {}'.format(eval_))
     else:
         if output_model:
-            print('training...')
             model = xgb.train(params, xgtrain, num_round)
             model.save_model(os.path.join(MODEL_DIR, 'model_xgb'))
         else:
@@ -180,7 +178,6 @@ def train_rf(train_set):
     train_data = df_in.drop(['cost'], axis=1)
 
     # train
-    print('training...')
     reg = RandomForestRegressor(n_jobs=-1, n_estimators=5000, verbose=1)
     reg.fit(train_data.fillna(0).as_matrix(),
             target_data.fillna(0).as_matrix())

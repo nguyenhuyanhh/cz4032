@@ -15,10 +15,12 @@ MODEL_DIR = os.path.join(CUR_DIR, 'model')
 
 
 def _train(train_func, train_set, **kwargs):
+    print('training using {}'.format(train_func.__name__))
     return train_func(train_set, **kwargs)
 
 
 def _predict(predict_func, test_set, **kwargs):
+    print('predicting using {}'.format(predict_func.__name__))
     return predict_func(test_set, **kwargs)
 
 
