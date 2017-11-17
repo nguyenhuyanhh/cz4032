@@ -116,7 +116,6 @@ def train_xgb(train_set, config_file=os.path.join(CUR_DIR, 'config.json'),
         del params['silent']  # show output again
 
         if output_model:
-            print('training...')
             model = xgb.train(params, xgtrain, num_round)
             model.save_model(os.path.join(MODEL_DIR, 'model_xgb'))
         else:
@@ -125,13 +124,48 @@ def train_xgb(train_set, config_file=os.path.join(CUR_DIR, 'config.json'),
             print('final test rmse: {}'.format(eval_))
     else:
         if output_model:
-            print('training...')
             model = xgb.train(params, xgtrain, num_round)
             model.save_model(os.path.join(MODEL_DIR, 'model_xgb'))
         else:
             print('performing cross-validation...')
             eval_ = -xgb_evaluate()
             print('final test rmse: {}'.format(eval_))
+
+
+def train_xgb_nfold(train_set, n_fold=10, config_file=os.path.join(CUR_DIR, 'config.json')):
+    """Train the xgboost model using n-fold.
+
+    Arguments:
+        train_set: str - path to training set
+        n_fold: int - number of folds, default to 10
+        config_file: str - path to config file (hyper-parameters)
+                default is 'config.json' in current directory
+    """
+    from sklearn.model_selection import KFold
+    import xgboost as xgb
+
+    # xgboost parameters
+    with open(config_file) as cfg:
+        params = json.load(cfg)
+    num_round = 5000
+
+    # get training matrix
+    df_in = pd.read_csv(train_set)
+    # log transforms for cost
+    df_in['cost'] = np.log1p(df_in['cost'])
+    target_data = df_in['cost'].as_matrix()
+    train_data = df_in.drop(['cost'], axis=1).as_matrix()
+
+    # get n-fold and train each fold
+    fold = 1
+    kf_ = KFold(n_splits=n_fold, shuffle=True, random_state=42)
+    for train_index, _ in kf_.split(df_in):
+        train, target = train_data[train_index], target_data[train_index]
+        xgtrain = xgb.DMatrix(train, target)
+        print('training fold {}...'.format(fold))
+        model = xgb.train(params, xgtrain, num_round)
+        model.save_model(os.path.join(MODEL_DIR, 'model_xgb_{}'.format(fold)))
+        fold += 1
 
 
 def train_rf(train_set):
@@ -141,6 +175,7 @@ def train_rf(train_set):
         train_set: str - path to training set
     """
     from sklearn.ensemble import RandomForestRegressor
+    from sklearn.externals import joblib
 
     # get training matrix
     df_in = pd.read_csv(train_set)
@@ -150,9 +185,11 @@ def train_rf(train_set):
     train_data = df_in.drop(['cost'], axis=1)
 
     # train
-    print('training...')
     reg = RandomForestRegressor(n_jobs=-1, n_estimators=5000, verbose=1)
     reg.fit(train_data.fillna(0).as_matrix(),
             target_data.fillna(0).as_matrix())
+
+    # save model
+    joblib.dump(reg, os.path.join(MODEL_DIR, 'model_rf'))
 
     return reg

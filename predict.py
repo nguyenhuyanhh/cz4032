@@ -23,7 +23,6 @@ def predict_xgb(test_set):
     import xgboost as xgb
 
     out_file = os.path.join(CUR_DIR, 'out_xgb.csv')
-    print('predicting...')
 
     # get test matrix
     df_in = pd.read_csv(test_set)
@@ -45,14 +44,51 @@ def predict_xgb(test_set):
     return out_file
 
 
-def predict_rf(reg, test_set):
+def predict_xgb_nfold(test_set, n_fold=10):
+    """Predict based on n-fold xgboost model.
+
+    Arguments:
+        test_set: str - path to test set
+        n_fold: int - number of folds, default to 10
+    """
+    import xgboost as xgb
+
+    # get test matrix
+    df_in = pd.read_csv(test_set)
+    test_data = df_in
+    xgtest = xgb.DMatrix(test_data.values)
+
+    outs = []
+    for fold in range(n_fold):
+        out_file = os.path.join(CUR_DIR, 'out_xgb_{}.csv'.format(fold + 1))
+
+        # predict
+        model = xgb.Booster()  # init model
+        model.load_model(os.path.join(
+            MODEL_DIR, 'model_xgb_{}'.format(fold + 1)))  # load model
+        ypred = model.predict(xgtest)
+        ypred = np.expm1(ypred)
+
+        # output
+        df_out = pd.DataFrame()
+        df_out['id'] = np.arange(1, len(ypred) + 1)
+        df_out['cost'] = ypred
+        df_out.to_csv(out_file, index=False)
+        outs += [out_file]
+
+    # ensemble averaging
+    ensemble(outs, ensemble_out=os.path.join(CUR_DIR, 'out_xgb_nfold.csv'))
+
+
+def predict_rf(test_set):
     """Predict based on random forest model.
 
     Arguments:
         test_set: str - path to test set
     """
+    from sklearn.externals import joblib
+
     out_file = os.path.join(CUR_DIR, 'out_rf.csv')
-    print('predicting...')
 
     # get test matrix
     df_in = pd.read_csv(test_set)
@@ -61,6 +97,7 @@ def predict_rf(reg, test_set):
     test_data = df_in
 
     # predict
+    reg = joblib.load(os.path.join(MODEL_DIR, 'model_rf'))
     ypred = reg.predict(test_data.fillna(0).as_matrix())
     ypred = np.expm1(ypred)
 
@@ -73,10 +110,17 @@ def predict_rf(reg, test_set):
     return out_file
 
 
-def ensemble(files, weights=None):
-    """Ensembling output files."""
+def ensemble(files, weights=None, ensemble_out=os.path.join(CUR_DIR, 'out_ens.csv')):
+    """Ensembling output files.
+
+    Arguments:
+        files: list(str) - list of paths to output files for ensembling
+        weights: list(float) - list of corresponding weights for each output file
+                default is None, equal weight
+        ensemble_out: str - path to final ensembled output
+                default to out_ens.csv in current directory
+    """
     print('ensembling...')
-    ensemble_out = os.path.join(CUR_DIR, 'out_ens.csv')
 
     # validate inputs
     tmp = files
@@ -107,6 +151,6 @@ def ensemble(files, weights=None):
     if weights:
         for cost, weight in zip(costs, weights):
             ensemble_cost['cost'] += cost * weight
-    else:
+    else:  # average
         ensemble_cost['cost'] = np.mean(costs, axis=0)
     ensemble_cost.to_csv(ensemble_out, index=False)
