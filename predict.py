@@ -1,5 +1,5 @@
 """
-Predict Caterpillar Tube Pricing using xgboost
+Predict Caterpillar Tube Pricing using xgboost, random forest and ensemble methods
 """
 
 from __future__ import print_function
